@@ -1,0 +1,382 @@
+# Replit Prompt: Cost Factor Calculator App
+
+## Project Overview
+
+Build a **Cost Factor Calculator** web application for commercial real estate project budgeting. The app allows users to input project parameters and adjust quality/specification sliders to calculate a detailed cost estimate with weighted factors.
+
+---
+
+## Tech Stack Recommendation
+
+- **Frontend**: React with Tailwind CSS (or Next.js)
+- **State Management**: React Context or Zustand
+- **UI Components**: shadcn/ui or Radix UI for sliders and dropdowns
+- **Backend** (optional): Can be fully client-side, or use Node.js/Express if data persistence is needed
+
+---
+
+## Core Features
+
+### 1. User Inputs Section
+
+#### Text Inputs
+| Field | Type | Description |
+|-------|------|-------------|
+| Project Name | Text input | Free text for project identification |
+| Project Size (RSF) | Number input | Rentable Square Feet - numeric value |
+
+#### Dropdown Selects (with factor lookups)
+These dropdowns must look up corresponding factors from the lookup tables below:
+
+**Project Size Range** → Factor lookup:
+```javascript
+const projectSizeFactors = [
+  { range: '<15,000', min: 0, max: 15000, factor: 1.5 },
+  { range: '15,001-30,000', min: 15001, max: 30000, factor: 1.1 },
+  { range: '30,001-60,000', min: 30001, max: 60000, factor: 1.0 },
+  { range: '60,000+', min: 60001, max: Infinity, factor: 0.98 }
+];
+```
+
+**# of Floors** → Factor lookup:
+```javascript
+const floorFactors = [
+  { floors: 1, factor: 1.0 },
+  { floors: 2, factor: 1.2 },
+  { floors: 3, factor: 1.3 },
+  { floors: 4, factor: 1.35 },
+  { floors: 5, factor: 1.37 },
+  { floors: 6, factor: 1.4 },
+  { floors: 7, factor: 1.45 }
+];
+```
+
+**Location** → Factor lookup:
+```javascript
+const locationFactors = [
+  { location: 'New York, NY', factor: 1.0 },
+  { location: 'Chicago', factor: 0.9 },
+  { location: 'Boston', factor: 0.9 },
+  { location: 'LA', factor: 1.0 },
+  { location: 'Atlanta', factor: 0.85 }
+];
+```
+
+---
+
+### 2. Slider Controls by Category
+
+Each slider represents a quality/specification level. Sliders adjust between a LOW and HIGH factor value. The position determines the current factor.
+
+#### Construction Costs Sliders
+| Slider Name | Weight | Low Factor | High Factor | Default |
+|-------------|--------|------------|-------------|---------|
+| Program Requirements | 40% | 0.70 | 1.40 | 1.05 |
+| Acoustical Performance | 20% | 0.70 | 1.25 | 0.975 |
+| Level of Finish | 20% | 0.75 | 1.25 | 1.00 |
+| Amenities | 7.5% | 0.75 | 1.10 | 0.925 |
+| Critical Systems | 7.5% | 0.75 | 1.10 | 0.925 |
+| Comfort | 5% | 0.75 | 1.10 | 0.925 |
+
+#### FF&E/Appliances Sliders
+| Slider Name | Weight | Low Factor | High Factor | Default |
+|-------------|--------|------------|-------------|---------|
+| FF&E | 95% | 0.75 | 1.20 | 0.975 |
+| Appliances | 5% | 0.50 | 2.00 | 1.25 |
+
+#### Signage Slider
+| Slider Name | Weight | Low Factor | High Factor | Default |
+|-------------|--------|------------|-------------|---------|
+| Signage | 100% | 0.75 | 1.20 | 0.975 |
+
+#### Technology (AV, IT & SEC) Sliders
+| Slider Name | Weight | Low Factor | High Factor | Default |
+|-------------|--------|------------|-------------|---------|
+| AV | 60% | 0.80 | 1.50 | 1.15 |
+| IT | 25% | 0.80 | 1.30 | 1.05 |
+| SEC | 15% | 0.80 | 1.20 | 1.00 |
+
+#### Design Fees Sliders
+| Slider Name | Weight | Low Factor | High Factor | Default |
+|-------------|--------|------------|-------------|---------|
+| Based on Above* | 70% | — | — | (calculated) |
+| Permitting Complexity | 30% | 0.80 | 1.20 | 1.00 |
+
+*Note: "Based on Above" is a **special calculation** - it derives 70% of its weight from the Construction factor and 10% from Other factors. See calculation logic below.
+
+#### Other Slider
+| Slider Name | Weight | Low Factor | High Factor | Default |
+|-------------|--------|------------|-------------|---------|
+| Moving Costs | 100% | 0.80 | 1.20 | 1.00 |
+
+---
+
+### 3. Base Values ($/RSF) - Hidden from User
+
+These are the baseline costs per rentable square foot at Medium budget level:
+
+```javascript
+const baseValuesPerRSF = {
+  constructionCosts: 260.75,  // Medium value
+  designFees: 21.00,
+  ffeAppliances: 40.25,
+  signage: 5.25,
+  technology: {
+    av: 11.55,
+    it: 3.85,
+    sec: 3.85
+  },
+  other: 3.50
+};
+```
+
+---
+
+## Calculation Logic
+
+### Step 1: Calculate Unique Project Factor
+
+This combines the three dropdown factors with their weights:
+
+```javascript
+const uniqueProjectFactor = 
+  (projectSizeFactor * 0.33) + 
+  (floorsFactor * 0.34) + 
+  (locationFactor * 0.33);
+```
+
+### Step 2: Calculate Category Factors
+
+For each category, calculate a weighted factor from its sliders:
+
+```javascript
+// Example for Construction Costs:
+const constructionFactor = 
+  (programRequirements * 0.40) +
+  (acousticalPerformance * 0.20) +
+  (levelOfFinish * 0.20) +
+  (amenities * 0.075) +
+  (criticalSystems * 0.075) +
+  (comfort * 0.05);
+
+// Apply Unique Project Factor
+const adjustedConstructionFactor = constructionFactor * uniqueProjectFactor;
+```
+
+### Step 3: Design Fee Special Calculation
+
+Design fees increase with project complexity. The factor derives from:
+- 70% weight from Construction factor
+- 30% weight from Permitting Complexity slider
+
+```javascript
+const designFeeFactor = 
+  (constructionFactor * 0.70) + 
+  (permittingComplexity * 0.30);
+
+// Additional: Design fees scale with total budget
+// Higher budgets → higher design fee percentage
+```
+
+### Step 4: Calculate Final Costs
+
+```javascript
+const projectSize = userInputRSF;
+
+// For each category:
+const constructionCostPerRSF = baseValuesPerRSF.constructionCosts * adjustedConstructionFactor;
+const constructionCostTotal = constructionCostPerRSF * projectSize;
+
+// Repeat for all categories...
+
+const subtotal = constructionCosts + designFees + ffeAppliances + signage + technology + other;
+
+// Contingency (user-adjustable percentage, default 5%)
+const contingency = subtotal * contingencyPercent;
+
+const grandTotal = subtotal + contingency;
+```
+
+---
+
+## UI/UX Requirements
+
+### Layout (Reference: See attached screenshot)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Cost Factor Calculator                                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌─────────────────────────────┐  ┌───────────────────────────┐ │
+│  │  CONSTRUCTION CRITERIA       │  │  COST PROJECTION          │ │
+│  │                              │  │                           │ │
+│  │  Adjust sliders to reflect   │  │  Base Value    $275/RSF   │ │
+│  │  project specifications      │  │                           │ │
+│  │                              │  │  Weighted      ████ 1.068 │ │
+│  │  ▣ Program Requirements      │  │  Factor                   │ │
+│  │    [━━━━●━━━━━━] Weight: 40% │  │                           │ │
+│  │    Low            High       │  │  Adjusted     $293.70/RSF │ │
+│  │                              │  │  Base Value               │ │
+│  │  ▣ Acoustical Performance    │  │                           │ │
+│  │    [━━━━━●━━━━━] Weight: 20% │  │  ○ Reset to Defaults      │ │
+│  │    Low            High       │  │                           │ │
+│  │                              │  └───────────────────────────┘ │
+│  │  ▣ Level of Finish           │                                │
+│  │    [━━━━━━●━━━━] Weight: 20% │                                │
+│  │    Low            High       │                                │
+│  │                              │                                │
+│  │  ... more sliders ...        │                                │
+│  │                              │                                │
+│  └─────────────────────────────┘                                 │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Design Specifications
+
+1. **Clean, minimal interface** - White/light gray background
+2. **Sliders**: 
+   - Blue track and thumb
+   - Show "Low" and "High" labels at ends
+   - Display weight percentage badge on right side (e.g., "Weight: 40%")
+3. **Category sections**: Group sliders under collapsible headers
+4. **Cost Projection Panel** (sticky on right side):
+   - Base Value ($/RSF)
+   - Weighted Factor (with progress bar visualization)
+   - Adjusted Base Value
+   - Reset to Defaults button
+5. **Hidden data**: Weights, factor ranges, and base values should NOT be editable by users - only sliders are interactive
+
+### Mobile Responsive
+
+- Stack the Cost Projection panel above sliders on mobile
+- Full-width sliders on smaller screens
+
+---
+
+## Data Model
+
+```typescript
+interface ProjectInput {
+  projectName: string;
+  projectSize: number;  // RSF
+  floors: number;
+  location: string;
+}
+
+interface SliderConfig {
+  id: string;
+  label: string;
+  category: string;
+  weight: number;      // 0-1 (percentage as decimal)
+  lowFactor: number;
+  highFactor: number;
+  defaultValue: number;
+  currentValue: number;
+}
+
+interface CategoryResult {
+  category: string;
+  factor: number;
+  costPerRSF: number;
+  totalCost: number;
+}
+
+interface ProjectOutput {
+  uniqueProjectFactor: number;
+  categories: CategoryResult[];
+  subtotal: number;
+  contingencyPercent: number;
+  contingency: number;
+  grandTotal: number;
+}
+```
+
+---
+
+## Output Display
+
+Show a summary table with:
+
+| Category | $/RSF | Total Cost |
+|----------|-------|------------|
+| Construction Costs | $278.48 | $9,746,835 |
+| FF&E/Appliances | $42.50 | $1,487,619 |
+| Signage | $5.12 | $179,156 |
+| Technology | $22.14 | $774,813 |
+| Design Fees | $32.31 | $1,130,966 |
+| **Subtotal** | **$380.55** | **$13,319,389** |
+| Contingency (5%) | $19.03 | $665,969 |
+| **Grand Total** | **$399.58** | **$13,985,358** |
+
+---
+
+## Additional Features (Nice to Have)
+
+1. **Export to PDF** - Generate a professional cost estimate report
+2. **Save/Load Projects** - Local storage or database persistence
+3. **Comparison Mode** - Compare multiple scenarios side by side
+4. **Admin Mode** - Allow adjusting hidden weights and base values (password protected)
+5. **Sensitivity Analysis** - Show LOW/MID/HIGH range estimates
+
+---
+
+## Key Implementation Notes
+
+### Factor Lookup Logic (The "Red Cells" Problem)
+
+When a user selects from a dropdown, look up the corresponding factor:
+
+```javascript
+function getProjectSizeFactor(rsf: number): number {
+  if (rsf <= 15000) return 1.5;
+  if (rsf <= 30000) return 1.1;
+  if (rsf <= 60000) return 1.0;
+  return 0.98;
+}
+
+function getFloorFactor(floors: number): number {
+  const floorMap: Record<number, number> = {
+    1: 1.0, 2: 1.2, 3: 1.3, 4: 1.35, 
+    5: 1.37, 6: 1.4, 7: 1.45
+  };
+  return floorMap[floors] ?? 1.0;
+}
+
+function getLocationFactor(location: string): number {
+  const locationMap: Record<string, number> = {
+    'New York, NY': 1.0,
+    'Chicago': 0.9,
+    'Boston': 0.9,
+    'LA': 1.0,
+    'Atlanta': 0.85
+  };
+  return locationMap[location] ?? 1.0;
+}
+```
+
+### Slider to Factor Conversion
+
+```javascript
+function sliderToFactor(sliderValue: number, low: number, high: number): number {
+  // sliderValue is 0-100 (percentage position)
+  return low + (high - low) * (sliderValue / 100);
+}
+```
+
+---
+
+## Summary
+
+Build a React app that:
+1. Accepts project inputs (name, size, floors, location)
+2. Looks up factors from dropdown selections
+3. Provides sliders for each quality/specification parameter
+4. Calculates weighted factors per category
+5. Applies factors to base $/RSF values
+6. Displays total cost estimates
+7. Keeps all weights/factors hidden from the user (clean UI)
+8. Matches the visual style in the reference screenshot
+
+The app should feel like a professional cost estimating tool with real-time updates as sliders are adjusted.
