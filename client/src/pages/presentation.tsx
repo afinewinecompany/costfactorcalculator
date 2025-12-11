@@ -195,7 +195,7 @@ export default function PresentationPage() {
                       ))}
                     </Pie>
                     <RechartsTooltip 
-                      formatter={(value: number) => `$${value.toLocaleString()}`}
+                      formatter={(value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     />
                     <Legend 
