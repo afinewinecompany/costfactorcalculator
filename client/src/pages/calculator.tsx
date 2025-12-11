@@ -69,9 +69,13 @@ export default function CalculatorPage() {
           </div>
           
           <div className="flex items-center gap-4">
-             <Button onClick={handlePresent} className="gap-2 shadow-sm">
+             <Button 
+               onClick={handlePresent} 
+               className="gap-2 shadow-sm transition-all hover:scale-105 active:scale-95 animate-pulse hover:animate-none"
+             >
                <Presentation className="h-4 w-4" />
-               Client Presentation
+               <span className="hidden sm:inline">Client Presentation</span>
+               <span className="inline sm:hidden">Present</span>
              </Button>
           </div>
         </div>
