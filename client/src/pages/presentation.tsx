@@ -153,17 +153,17 @@ export default function PresentationPage() {
 
           <Card className="bg-white border-slate-100 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-slate-500 text-sm font-medium uppercase tracking-wider">Project Unique Factor</CardTitle>
+              <CardTitle className="text-slate-500 text-sm font-medium uppercase tracking-wider">Contingency Reserve</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-end gap-2">
                  <div className="text-3xl md:text-4xl font-serif text-slate-900">
-                  {results.uniqueProjectFactor.toFixed(3)}x
+                  ${results.contingency.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </div>
-                <div className="mb-1 text-sm font-medium text-slate-400">Multiplier</div>
+                <div className="mb-1 text-sm font-medium text-slate-400">Total</div>
               </div>
               <div className="mt-4 text-xs text-slate-400 leading-relaxed">
-                Determined by Project Size, Floor Count, and Location. This global multiplier applies to all cost categories.
+                A { (results.contingencyPercent * 100).toFixed(0) }% safety margin allocated for unforeseen costs and risks.
               </div>
             </CardContent>
           </Card>
