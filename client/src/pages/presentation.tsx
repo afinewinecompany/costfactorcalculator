@@ -21,7 +21,6 @@ import {
   Share2 
 } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { AnimatedNumber } from "@/components/ui/animated-number";
 
 const COLORS = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe'];
 
@@ -166,7 +165,7 @@ export default function PresentationPage() {
               </CardHeader>
               <CardContent className="relative z-10">
                 <div className="text-3xl md:text-4xl lg:text-5xl font-serif font-medium tracking-tight">
-                  <AnimatedNumber value={results.grandTotal} prefix="$" />
+                  ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </div>
               </CardContent>
             </Card>
@@ -179,7 +178,7 @@ export default function PresentationPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl md:text-4xl font-serif text-slate-900">
-                  <AnimatedNumber value={results.grandTotalPerRSF} prefix="$" decimals={2} />
+                  ${results.grandTotalPerRSF.toFixed(2)}
                 </div>
                 <div className="mt-2 text-slate-500 text-sm font-medium">
                   Based on {inputs.projectSize.toLocaleString()} RSF
@@ -196,7 +195,7 @@ export default function PresentationPage() {
               <CardContent>
                 <div className="flex items-end gap-2">
                    <div className="text-3xl md:text-4xl font-serif text-slate-900">
-                    <AnimatedNumber value={results.contingency} prefix="$" />
+                    ${results.contingency.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </div>
                   <div className="mb-1 text-sm font-medium text-slate-400">Total</div>
                 </div>
