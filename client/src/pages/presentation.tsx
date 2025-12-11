@@ -131,9 +131,6 @@ export default function PresentationPage() {
               <div className="text-3xl md:text-4xl font-serif">
                 ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
-              <div className="mt-2 text-slate-400 text-sm">
-                Includes {(results.contingencyPercent * 100).toFixed(0)}% contingency
-              </div>
             </CardContent>
           </Card>
 
