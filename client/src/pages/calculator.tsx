@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { ProjectInputs } from "@/components/calculator/ProjectInputs";
 import { SliderGroup } from "@/components/calculator/SliderGroup";
 import { CostProjection } from "@/components/calculator/CostProjection";
@@ -6,8 +7,13 @@ import { SummaryTable } from "@/components/calculator/SummaryTable";
 import { calculateProjectCosts, getInitialSliderValues } from "@/lib/calculator-engine";
 import { INITIAL_SLIDERS } from "@/lib/calculator-constants";
 import { ProjectInput } from "@/lib/calculator-types";
+import { encodeState } from "@/lib/url-state";
+import { Button } from "@/components/ui/button";
+import { Presentation, Settings2 } from "lucide-react";
 
 export default function CalculatorPage() {
+  const [location, setLocation] = useLocation();
+  
   const [inputs, setInputs] = useState<ProjectInput>({
     projectName: "New Project",
     projectSize: 25000,
@@ -34,6 +40,11 @@ export default function CalculatorPage() {
     return calculateProjectCosts(inputs, sliderValues);
   }, [inputs, sliderValues]);
 
+  const handlePresent = () => {
+    const stateString = encodeState(inputs, sliderValues);
+    setLocation(`/presentation?data=${stateString}`);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -46,9 +57,17 @@ export default function CalculatorPage() {
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
               Cost Factor Calculator
             </h1>
+            <div className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 text-xs font-medium text-slate-500 flex items-center gap-1 border border-slate-200">
+              <Settings2 className="h-3 w-3" />
+              Editor Mode
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground hidden md:block">
-            Commercial Real Estate Budgeting
+          
+          <div className="flex items-center gap-4">
+             <Button onClick={handlePresent} className="gap-2 shadow-sm">
+               <Presentation className="h-4 w-4" />
+               Client Presentation
+             </Button>
           </div>
         </div>
       </header>
