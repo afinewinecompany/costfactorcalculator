@@ -4,9 +4,10 @@ import { ProjectInputs } from "@/components/calculator/ProjectInputs";
 import { SliderGroup } from "@/components/calculator/SliderGroup";
 import { CostProjection } from "@/components/calculator/CostProjection";
 import { SummaryTable } from "@/components/calculator/SummaryTable";
+import { BaseCostsSettings } from "@/components/calculator/BaseCostsSettings";
 import { calculateProjectCosts, getInitialSliderValues } from "@/lib/calculator-engine";
-import { INITIAL_SLIDERS } from "@/lib/calculator-constants";
-import { ProjectInput } from "@/lib/calculator-types";
+import { INITIAL_SLIDERS, BASE_VALUES_PER_RSF } from "@/lib/calculator-constants";
+import { ProjectInput, BaseValues } from "@/lib/calculator-types";
 import { encodeState } from "@/lib/url-state";
 import { Button } from "@/components/ui/button";
 import { Presentation, Settings2 } from "lucide-react";
@@ -25,6 +26,8 @@ export default function CalculatorPage() {
     getInitialSliderValues()
   );
 
+  const [baseValues, setBaseValues] = useState<BaseValues>(BASE_VALUES_PER_RSF);
+
   const handleSliderChange = (id: string, value: number) => {
     setSliderValues((prev) => ({
       ...prev,
@@ -34,14 +37,16 @@ export default function CalculatorPage() {
 
   const handleReset = () => {
     setSliderValues(getInitialSliderValues());
+    // Also reset base values? Probably just sliders as "Reset to Defaults" usually implies sliders in this context
+    // But let's clarify that reset button in CostProjection specifically resets defaults for sliders
   };
 
   const results = useMemo(() => {
-    return calculateProjectCosts(inputs, sliderValues);
-  }, [inputs, sliderValues]);
+    return calculateProjectCosts(inputs, sliderValues, baseValues);
+  }, [inputs, sliderValues, baseValues]);
 
   const handlePresent = () => {
-    const stateString = encodeState(inputs, sliderValues);
+    const stateString = encodeState(inputs, sliderValues, baseValues);
     setLocation(`/presentation?data=${stateString}`);
   };
 
@@ -79,6 +84,10 @@ export default function CalculatorPage() {
           <div className="lg:col-span-8 space-y-8">
             <section>
               <ProjectInputs input={inputs} onChange={setInputs} />
+            </section>
+            
+            <section>
+              <BaseCostsSettings values={baseValues} onChange={setBaseValues} />
             </section>
 
             <section className="space-y-4">

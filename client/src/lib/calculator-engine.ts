@@ -9,9 +9,9 @@ import {
   PROJECT_SIZE_RANGES, 
   FLOOR_FACTORS, 
   LOCATIONS, 
-  BASE_VALUES_PER_RSF, 
   INITIAL_SLIDERS,
-  DEFAULT_CONTINGENCY_PERCENT 
+  DEFAULT_CONTINGENCY_PERCENT,
+  BASE_VALUES_PER_RSF as DEFAULT_BASE_VALUES
 } from "./calculator-constants";
 
 // Helper: Interpolate slider value (0-100) to factor
@@ -27,7 +27,8 @@ export function getFactorForSlider(sliderId: string, value: number, config: Slid
 // Main Calculation Engine
 export function calculateProjectCosts(
   inputs: ProjectInput,
-  sliderValues: Record<string, number> // Map of slider ID to value (0-100)
+  sliderValues: Record<string, number>, // Map of slider ID to value (0-100)
+  baseValues: BaseValues = DEFAULT_BASE_VALUES
 ): ProjectOutput {
   
   // 1. Calculate Unique Project Factor
@@ -58,25 +59,11 @@ export function calculateProjectCosts(
     let weightedFactorSum = 0;
     
     sliders.forEach(slider => {
-      const value = sliderValues[slider.id] ?? slider.defaultValue * 100; // Assuming default is factor, need to convert back? 
-      // WAIT: INITIAL_SLIDERS defaultValue is the FACTOR value, not 0-100 position.
-      // We need to reverse calculate the 0-100 position for the default state if we haven't initialized it.
-      // But here we receive 0-100 values from state.
-      // Let's assume the state is initialized correctly.
-      
-      // Actually, for safety, if value is missing, we should derive it from default factor.
-      // But for this function, let's assume valid inputs or handle defaults.
-      
-      // Let's re-read the constants. 
-      // defaultValue: 1.05 (Factor).
-      // low: 0.70, high: 1.40.
-      // 1.05 is exactly middle (50%).
-      
+      // Logic same as before
       let factor = 0;
       if (sliderValues[slider.id] !== undefined) {
          factor = sliderToFactor(sliderValues[slider.id], slider.lowFactor, slider.highFactor);
       } else {
-         // Fallback to default factor
          factor = slider.defaultValue;
       }
       
@@ -91,25 +78,25 @@ export function calculateProjectCosts(
   };
 
   // --- Construction ---
-  const construction = calculateCategory("construction", BASE_VALUES_PER_RSF.constructionCosts);
+  const construction = calculateCategory("construction", baseValues.constructionCosts);
   categories.push({ category: "Construction Costs", ...construction });
 
   // --- FF&E / Appliances ---
-  const ffe = calculateCategory("ffeAppliances", BASE_VALUES_PER_RSF.ffeAppliances);
+  const ffe = calculateCategory("ffeAppliances", baseValues.ffeAppliances);
   categories.push({ category: "FF&E / Appliances", ...ffe });
 
   // --- Signage ---
-  const signage = calculateCategory("signage", BASE_VALUES_PER_RSF.signage);
+  const signage = calculateCategory("signage", baseValues.signage);
   categories.push({ category: "Signage", ...signage });
 
   // --- Technology ---
   // Tech base value is sum of AV, IT, SEC
-  const techBase = BASE_VALUES_PER_RSF.technology.av + BASE_VALUES_PER_RSF.technology.it + BASE_VALUES_PER_RSF.technology.sec;
+  const techBase = baseValues.technology.av + baseValues.technology.it + baseValues.technology.sec;
   const technology = calculateCategory("technology", techBase);
   categories.push({ category: "Technology", ...technology });
 
   // --- Other (Moving Costs) ---
-  const other = calculateCategory("other", BASE_VALUES_PER_RSF.other);
+  const other = calculateCategory("other", baseValues.other);
   categories.push({ category: "Other", ...other });
 
   // --- Design Fees (Special Calculation) ---
@@ -129,7 +116,7 @@ export function calculateProjectCosts(
 
   const designFactorRaw = (constructionFactorRaw * 0.70) + (permittingFactor * 0.30);
   const designAdjustedFactor = designFactorRaw * uniqueProjectFactor;
-  const designCostPerRSF = BASE_VALUES_PER_RSF.designFees * designAdjustedFactor;
+  const designCostPerRSF = baseValues.designFees * designAdjustedFactor;
   const designTotalCost = designCostPerRSF * inputs.projectSize;
 
   categories.push({
@@ -148,12 +135,12 @@ export function calculateProjectCosts(
   // Base Totals (for reference/projection)
   // Sum of all base values
   const totalBasePerRSF = 
-    BASE_VALUES_PER_RSF.constructionCosts + 
-    BASE_VALUES_PER_RSF.designFees + 
-    BASE_VALUES_PER_RSF.ffeAppliances + 
-    BASE_VALUES_PER_RSF.signage + 
+    baseValues.constructionCosts + 
+    baseValues.designFees + 
+    baseValues.ffeAppliances + 
+    baseValues.signage + 
     techBase + 
-    BASE_VALUES_PER_RSF.other;
+    baseValues.other;
 
   return {
     uniqueProjectFactor,

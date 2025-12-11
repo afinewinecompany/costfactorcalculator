@@ -57,8 +57,8 @@ export default function PresentationPage() {
     );
   }
 
-  const { inputs, sliderValues } = state;
-  const results = calculateProjectCosts(inputs, sliderValues);
+  const { inputs, sliderValues, baseValues } = state;
+  const results = calculateProjectCosts(inputs, sliderValues, baseValues);
 
   // Prepare chart data
   const chartData = results.categories.map(cat => ({
