@@ -54,8 +54,6 @@ export function SummaryTable({ output }: SummaryTableProps) {
             <TableRow className="bg-muted/20">
               <TableCell colSpan={2} className="font-bold text-base">Subtotal</TableCell>
               <TableCell className="text-right font-bold font-mono">
-                ${(output.subtotal / (output.grandTotal / output.grandTotalPerRSF)).toFixed(2) /* Implied RSF calculation or pass it down? Using a hacky division for now or just trust perRSF calc if consistent */ }
-                {/* Wait, output doesn't strictly have subtotalPerRSF. Let's calculate it safely */}
                 ${(output.subtotal / (output.grandTotal / output.grandTotalPerRSF || 1)).toFixed(2)}
               </TableCell>
               <TableCell className="text-right font-bold font-mono text-base">
