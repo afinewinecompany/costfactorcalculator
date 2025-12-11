@@ -94,7 +94,7 @@ export default function PresentationPage() {
       </nav>
 
       {/* Report Content */}
-      <div className="max-w-5xl mx-auto p-8 md:p-12 lg:p-16 space-y-16 animate-in fade-in duration-700 slide-in-from-bottom-4">
+      <div className="max-w-5xl mx-auto p-4 md:p-12 lg:p-16 space-y-12 md:space-y-16 animate-in fade-in duration-700 slide-in-from-bottom-4">
         
         {/* Header Section */}
         <header className="space-y-6 text-center md:text-left border-b border-slate-100 pb-12">
@@ -178,13 +178,13 @@ export default function PresentationPage() {
           {/* Chart */}
           <div className="space-y-6">
              <h3 className="text-xl font-serif text-slate-900">Budget Allocation</h3>
-             <div className="h-[400px] w-full border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+             <div className="h-[450px] w-full border border-slate-100 rounded-xl p-4 bg-slate-50/50">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={chartData}
                       cx="50%"
-                      cy="50%"
+                      cy="45%"
                       innerRadius={60}
                       outerRadius={80}
                       paddingAngle={5}
@@ -200,8 +200,8 @@ export default function PresentationPage() {
                     />
                     <Legend 
                       verticalAlign="bottom" 
-                      height={100} 
-                      wrapperStyle={{ paddingTop: '20px' }}
+                      height={120} 
+                      wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }}
                       layout="horizontal"
                       align="center"
                     />
@@ -215,10 +215,10 @@ export default function PresentationPage() {
           </div>
 
           {/* Table */}
-          <div className="space-y-6">
+          <div className="space-y-6 w-full overflow-hidden">
             <h3 className="text-xl font-serif text-slate-900">Detailed Breakdown</h3>
-            <div className="rounded-xl border border-slate-100 overflow-hidden">
-              <table className="w-full text-sm text-left">
+            <div className="rounded-xl border border-slate-100 overflow-x-auto">
+              <table className="w-full text-sm text-left whitespace-nowrap">
                 <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
                   <tr>
                     <th className="px-6 py-4 font-medium">Category</th>
@@ -245,7 +245,7 @@ export default function PresentationPage() {
               </table>
             </div>
             
-            <div className="flex justify-between items-center px-6 py-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="flex flex-col md:flex-row justify-between items-center px-6 py-4 bg-slate-50 rounded-xl border border-slate-100 gap-2 md:gap-0">
                <span className="text-slate-500">Contingency ({(results.contingencyPercent * 100)}%)</span>
                <span className="font-mono text-slate-700">${results.contingency.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             </div>
