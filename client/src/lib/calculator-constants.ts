@@ -25,18 +25,47 @@ export const LOCATIONS = [
   { location: "Atlanta", factor: 0.85 },
 ];
 
-export const BASE_VALUES_PER_RSF: BaseValues = {
-  constructionCosts: 260.75,
-  designFees: 21.0,
-  ffeAppliances: 40.25,
-  signage: 5.25,
-  technology: {
-    av: 11.55,
-    it: 3.85,
-    sec: 3.85,
+// Defining scenarios for base costs
+export const BASE_COST_SCENARIOS = {
+  LOW: {
+    constructionCosts: 210.00,
+    designFees: 16.00,
+    ffeAppliances: 30.00,
+    signage: 4.00,
+    technology: {
+      av: 9.00,
+      it: 3.00,
+      sec: 3.00,
+    },
+    other: 2.50,
   },
-  other: 3.5,
+  MEDIUM: {
+    constructionCosts: 260.75,
+    designFees: 21.00,
+    ffeAppliances: 40.25,
+    signage: 5.25,
+    technology: {
+      av: 11.55,
+      it: 3.85,
+      sec: 3.85,
+    },
+    other: 3.50,
+  },
+  HIGH: {
+    constructionCosts: 315.00,
+    designFees: 26.00,
+    ffeAppliances: 50.00,
+    signage: 7.00,
+    technology: {
+      av: 15.00,
+      it: 5.00,
+      sec: 5.00,
+    },
+    other: 5.00,
+  }
 };
+
+export const BASE_VALUES_PER_RSF: BaseValues = BASE_COST_SCENARIOS.MEDIUM;
 
 export const DEFAULT_CONTINGENCY_PERCENT = 0.05;
 

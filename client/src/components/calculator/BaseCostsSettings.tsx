@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   Accordion, 
   AccordionContent, 
@@ -7,8 +7,10 @@ import {
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BaseValues } from "@/lib/calculator-types";
-import { Settings } from "lucide-react";
+import { Settings, BarChart3 } from "lucide-react";
+import { BASE_COST_SCENARIOS } from "@/lib/calculator-constants";
 
 interface BaseCostsSettingsProps {
   values: BaseValues;
@@ -16,7 +18,19 @@ interface BaseCostsSettingsProps {
 }
 
 export function BaseCostsSettings({ values, onChange }: BaseCostsSettingsProps) {
+  const [selectedScenario, setSelectedScenario] = useState<string>("MEDIUM");
+
+  const handleScenarioChange = (scenario: string) => {
+    setSelectedScenario(scenario);
+    // @ts-ignore
+    const preset = BASE_COST_SCENARIOS[scenario];
+    if (preset) {
+      onChange(preset);
+    }
+  };
+
   const handleChange = (path: string, val: number) => {
+    setSelectedScenario("CUSTOM");
     const newValues = { ...values };
     
     if (path.includes('.')) {
@@ -31,6 +45,9 @@ export function BaseCostsSettings({ values, onChange }: BaseCostsSettingsProps) 
     onChange(newValues);
   };
 
+  // Helper to check if current values match a scenario (for UI consistency if props change externally)
+  // But for now, local state is fine.
+
   return (
     <Accordion type="single" collapsible className="w-full bg-white/50 border rounded-lg shadow-sm">
       <AccordionItem value="base-costs" className="border-b-0">
@@ -40,8 +57,32 @@ export function BaseCostsSettings({ values, onChange }: BaseCostsSettingsProps) 
             <span className="font-medium text-sm">Configure Base Cost Assumptions ($/RSF)</span>
           </div>
         </AccordionTrigger>
-        <AccordionContent className="px-6 pb-6 pt-2">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+        <AccordionContent className="px-6 pb-6 pt-2 space-y-6">
+          
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+             <Label className="mb-2 block text-sm font-medium text-slate-700">Select Market Tier</Label>
+             <div className="flex gap-4 items-center">
+                <Select value={selectedScenario} onValueChange={handleScenarioChange}>
+                  <SelectTrigger className="w-full md:w-[250px] bg-white">
+                    <SelectValue placeholder="Select a tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOW">Low Tier Market</SelectItem>
+                    <SelectItem value="MEDIUM">Medium Tier Market (Default)</SelectItem>
+                    <SelectItem value="HIGH">High Tier Market</SelectItem>
+                    <SelectItem value="CUSTOM">Custom Values</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground hidden md:block">
+                  {selectedScenario === "LOW" && "Optimized for budget-conscious projects (~$270/RSF base)"}
+                  {selectedScenario === "MEDIUM" && "Standard market rates (~$350/RSF base)"}
+                  {selectedScenario === "HIGH" && "Premium specifications (~$410/RSF base)"}
+                  {selectedScenario === "CUSTOM" && "Manually adjusted rates"}
+                </div>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 opacity-90">
             
             <div className="space-y-2">
               <Label htmlFor="constructionCosts" className="text-xs text-muted-foreground uppercase tracking-wider">Construction</Label>
