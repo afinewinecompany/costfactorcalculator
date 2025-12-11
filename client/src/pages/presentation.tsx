@@ -178,7 +178,7 @@ export default function PresentationPage() {
           {/* Chart */}
           <div className="space-y-6">
              <h3 className="text-xl font-serif text-slate-900">Budget Allocation</h3>
-             <div className="h-[300px] w-full border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+             <div className="h-[400px] w-full border border-slate-100 rounded-xl p-4 bg-slate-50/50">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -198,7 +198,13 @@ export default function PresentationPage() {
                       formatter={(value: number) => `$${value.toLocaleString()}`}
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     />
-                    <Legend verticalAlign="bottom" height={36}/>
+                    <Legend 
+                      verticalAlign="bottom" 
+                      height={100} 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      layout="horizontal"
+                      align="center"
+                    />
                   </PieChart>
                 </ResponsiveContainer>
              </div>
