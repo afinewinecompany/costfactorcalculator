@@ -153,20 +153,17 @@ export default function PresentationPage() {
 
           <Card className="bg-white border-slate-100 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-slate-500 text-sm font-medium uppercase tracking-wider">Project Complexity</CardTitle>
+              <CardTitle className="text-slate-500 text-sm font-medium uppercase tracking-wider">Project Unique Factor</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-end gap-2">
                  <div className="text-3xl md:text-4xl font-serif text-slate-900">
-                  {results.uniqueProjectFactor.toFixed(2)}x
+                  {results.uniqueProjectFactor.toFixed(3)}x
                 </div>
-                <div className="mb-1 text-sm font-medium text-slate-400">Factor</div>
+                <div className="mb-1 text-sm font-medium text-slate-400">Multiplier</div>
               </div>
-              <div className="mt-2 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-primary h-full rounded-full" 
-                  style={{ width: `${Math.min(100, Math.max(0, ((results.uniqueProjectFactor - 0.5) / 1.0) * 100))}%` }}
-                />
+              <div className="mt-4 text-xs text-slate-400 leading-relaxed">
+                Determined by Project Size, Floor Count, and Location. This global multiplier applies to all cost categories.
               </div>
             </CardContent>
           </Card>
