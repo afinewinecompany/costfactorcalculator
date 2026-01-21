@@ -74,25 +74,28 @@ export default function ProjectListPage() {
     <div className="min-h-screen bg-slate-50/50">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img
-              src="/Connected_Logo.png"
-              alt="Connected Logo"
-              className="h-9 w-auto"
-            />
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Budget Breakdown
-              </h1>
-              <p className="text-xs text-muted-foreground">Project Management</p>
+        <div className="container mx-auto px-4 py-3 md:py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+              <img
+                src="/Connected_Logo.png"
+                alt="Connected Logo"
+                className="h-7 md:h-9 w-auto flex-shrink-0"
+              />
+              <div className="min-w-0">
+                <h1 className="text-base md:text-xl font-bold tracking-tight text-slate-900 truncate">
+                  Budget Breakdown
+                </h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">Project Management</p>
+              </div>
             </div>
-          </div>
 
-          <Button onClick={handleCreateNew} className="gap-2 shadow-sm">
-            <Plus className="h-4 w-4" />
-            New Project
-          </Button>
+            <Button onClick={handleCreateNew} className="gap-1.5 md:gap-2 shadow-sm flex-shrink-0" size="sm">
+              <Plus className="h-4 w-4" />
+              <span className="hidden xs:inline">New Project</span>
+              <span className="xs:hidden">New</span>
+            </Button>
+          </div>
         </div>
       </header>
 
