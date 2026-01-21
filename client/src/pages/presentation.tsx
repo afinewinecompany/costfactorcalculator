@@ -1,4 +1,5 @@
-import React, { useMemo, useEffect, useState, useRef } from "react";
+import React, { useMemo, useEffect, useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useSearch } from "wouter";
 import { decodeState, encodeState } from "@/lib/url-state";
 import { calculateProjectCosts } from "@/lib/calculator-engine";
@@ -46,23 +47,39 @@ interface BudgetSummaryWidgetProps {
   results: ReturnType<typeof calculateProjectCosts>;
   initialResults: ReturnType<typeof calculateProjectCosts> | null;
   onClose: () => void;
+  isMobile: boolean;
 }
 
-function BudgetSummaryWidget({ results, initialResults, onClose }: BudgetSummaryWidgetProps) {
+function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: BudgetSummaryWidgetProps) {
   const totalDiff = initialResults ? results.grandTotal - initialResults.grandTotal : 0;
   const percentChange = initialResults && initialResults.grandTotal > 0
     ? ((totalDiff / initialResults.grandTotal) * 100)
     : 0;
 
+  // Mobile: Bottom sheet style widget
+  // Desktop: Fixed sidebar widget
   return (
     <motion.div
-      initial={{ opacity: 0, x: 100, scale: 0.9 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 100, scale: 0.9 }}
+      initial={isMobile
+        ? { opacity: 0, y: 100 }
+        : { opacity: 0, x: 100, scale: 0.9 }
+      }
+      animate={isMobile
+        ? { opacity: 1, y: 0 }
+        : { opacity: 1, x: 0, scale: 1 }
+      }
+      exit={isMobile
+        ? { opacity: 0, y: 100 }
+        : { opacity: 0, x: 100, scale: 0.9 }
+      }
       transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className="fixed right-4 top-24 z-30 w-72 print:hidden"
+      className={
+        isMobile
+          ? "fixed bottom-0 left-0 right-0 z-30 print:hidden safe-area-bottom"
+          : "fixed right-4 top-24 z-30 w-72 print:hidden"
+      }
     >
-      <Card className="bg-white/95 backdrop-blur-xl border-slate-200/60 shadow-2xl shadow-slate-900/10 overflow-hidden">
+      <Card className={`bg-white/95 backdrop-blur-xl border-slate-200/60 shadow-2xl shadow-slate-900/10 overflow-hidden ${isMobile ? 'rounded-b-none rounded-t-2xl' : ''}`}>
         {/* Header */}
         <div className="bg-gradient-to-r from-[#2F739E] to-[#4A90B8] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -71,121 +88,183 @@ function BudgetSummaryWidget({ results, initialResults, onClose }: BudgetSummary
           </div>
           <button
             onClick={onClose}
-            className="text-white/60 hover:text-white transition-colors"
+            className="text-white/60 hover:text-white transition-colors p-1"
+            aria-label="Close budget widget"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <CardContent className="p-4 space-y-4">
-          {/* Total Budget */}
-          <div className="space-y-1">
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Investment</p>
-            <div className="flex items-end justify-between">
-              <motion.span
-                key={results.grandTotal}
-                initial={{ scale: 1.1, color: '#2F739E' }}
-                animate={{ scale: 1, color: '#0f172a' }}
-                className="text-2xl font-bold text-slate-900"
-              >
-                ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </motion.span>
-              {totalDiff !== 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex items-center gap-1 text-sm font-semibold ${
-                    totalDiff > 0 ? 'text-rose-500' : 'text-emerald-500'
-                  }`}
-                >
-                  {totalDiff > 0 ? (
-                    <ArrowUpRight className="w-4 h-4" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4" />
-                  )}
-                  <span>{totalDiff > 0 ? '+' : ''}{percentChange.toFixed(1)}%</span>
-                </motion.div>
-              )}
-            </div>
-            <p className="text-xs text-slate-400">
-              ${results.grandTotalPerRSF.toFixed(2)} per sq ft
-            </p>
-          </div>
-
-          {/* Divider */}
-          <div className="h-px bg-slate-100" />
-
-          {/* Category Breakdown - Compact */}
-          <div className="space-y-2">
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">By Category</p>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-              {results.categories.map((cat, i) => {
-                const initialCat = initialResults?.categories.find(c => c.category === cat.category);
-                const catDiff = initialCat ? cat.totalCost - initialCat.totalCost : 0;
-
-                return (
-                  <motion.div
-                    key={cat.category}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors"
-                    initial={false}
-                    animate={{
-                      backgroundColor: catDiff !== 0 ? 'rgba(47, 115, 158, 0.05)' : 'transparent'
-                    }}
+        <CardContent className={`space-y-4 ${isMobile ? 'p-3' : 'p-4'}`}>
+          {/* Mobile: Compact horizontal layout */}
+          {isMobile ? (
+            <>
+              {/* Total Budget - Compact for mobile */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Total Investment</p>
+                  <motion.span
+                    key={results.grandTotal}
+                    initial={{ scale: 1.1, color: '#2F739E' }}
+                    animate={{ scale: 1, color: '#0f172a' }}
+                    className="text-xl font-bold text-slate-900"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: COLORS[i % COLORS.length] }}
-                      />
-                      <span className="text-xs text-slate-600 truncate">{cat.category}</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <motion.span
-                        key={cat.totalCost}
-                        initial={{ scale: 1.05 }}
-                        animate={{ scale: 1 }}
-                        className="text-xs font-medium text-slate-900"
-                      >
-                        ${(cat.totalCost / 1000).toFixed(0)}k
-                      </motion.span>
-                      {catDiff !== 0 && (
-                        <span className={`text-[10px] font-medium ${
-                          catDiff > 0 ? 'text-rose-500' : 'text-emerald-500'
-                        }`}>
-                          {catDiff > 0 ? '+' : ''}{((catDiff / (initialCat?.totalCost || 1)) * 100).toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
+                    ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </motion.span>
+                </div>
+                {totalDiff !== 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full ${
+                      totalDiff > 0 ? 'text-rose-600 bg-rose-50' : 'text-emerald-600 bg-emerald-50'
+                    }`}
+                  >
+                    {totalDiff > 0 ? (
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    ) : (
+                      <ArrowDownRight className="w-3.5 h-3.5" />
+                    )}
+                    <span>{totalDiff > 0 ? '+' : ''}{percentChange.toFixed(1)}%</span>
                   </motion.div>
-                );
-              })}
-            </div>
-          </div>
+                )}
+              </div>
 
-          {/* Divider */}
-          <div className="h-px bg-slate-100" />
+              {/* Quick Stats - Horizontal on mobile */}
+              <div className="flex gap-3">
+                <div className="flex-1 bg-slate-50 rounded-lg p-2 text-center">
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Base</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    ${(results.subtotal / 1000).toFixed(0)}k
+                  </p>
+                </div>
+                <div className="flex-1 bg-slate-50 rounded-lg p-2 text-center">
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Contingency</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    ${(results.contingency / 1000).toFixed(0)}k
+                  </p>
+                </div>
+                <div className="flex-1 bg-slate-50 rounded-lg p-2 text-center">
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Per SF</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    ${results.grandTotalPerRSF.toFixed(0)}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Desktop: Full layout */}
+              {/* Total Budget */}
+              <div className="space-y-1">
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Investment</p>
+                <div className="flex items-end justify-between">
+                  <motion.span
+                    key={results.grandTotal}
+                    initial={{ scale: 1.1, color: '#2F739E' }}
+                    animate={{ scale: 1, color: '#0f172a' }}
+                    className="text-2xl font-bold text-slate-900"
+                  >
+                    ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </motion.span>
+                  {totalDiff !== 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex items-center gap-1 text-sm font-semibold ${
+                        totalDiff > 0 ? 'text-rose-500' : 'text-emerald-500'
+                      }`}
+                    >
+                      {totalDiff > 0 ? (
+                        <ArrowUpRight className="w-4 h-4" />
+                      ) : (
+                        <ArrowDownRight className="w-4 h-4" />
+                      )}
+                      <span>{totalDiff > 0 ? '+' : ''}{percentChange.toFixed(1)}%</span>
+                    </motion.div>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400">
+                  ${results.grandTotalPerRSF.toFixed(2)} per sq ft
+                </p>
+              </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 rounded-lg p-2.5">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Base Cost</p>
-              <p className="text-sm font-semibold text-slate-900">
-                ${(results.subtotal / 1000).toFixed(0)}k
-              </p>
-            </div>
-            <div className="bg-slate-50 rounded-lg p-2.5">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Contingency</p>
-              <p className="text-sm font-semibold text-slate-900">
-                ${(results.contingency / 1000).toFixed(0)}k
-              </p>
-            </div>
-          </div>
+              {/* Divider */}
+              <div className="h-px bg-slate-100" />
 
-          {/* Reset hint */}
-          {totalDiff !== 0 && (
-            <p className="text-[10px] text-center text-slate-400">
-              Comparing to your original estimate
-            </p>
+              {/* Category Breakdown - Compact */}
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">By Category</p>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {results.categories.map((cat, i) => {
+                    const initialCat = initialResults?.categories.find(c => c.category === cat.category);
+                    const catDiff = initialCat ? cat.totalCost - initialCat.totalCost : 0;
+
+                    return (
+                      <motion.div
+                        key={cat.category}
+                        className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors"
+                        initial={false}
+                        animate={{
+                          backgroundColor: catDiff !== 0 ? 'rgba(47, 115, 158, 0.05)' : 'transparent'
+                        }}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                          />
+                          <span className="text-xs text-slate-600 truncate">{cat.category}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <motion.span
+                            key={cat.totalCost}
+                            initial={{ scale: 1.05 }}
+                            animate={{ scale: 1 }}
+                            className="text-xs font-medium text-slate-900"
+                          >
+                            ${(cat.totalCost / 1000).toFixed(0)}k
+                          </motion.span>
+                          {catDiff !== 0 && (
+                            <span className={`text-[10px] font-medium ${
+                              catDiff > 0 ? 'text-rose-500' : 'text-emerald-500'
+                            }`}>
+                              {catDiff > 0 ? '+' : ''}{((catDiff / (initialCat?.totalCost || 1)) * 100).toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="h-px bg-slate-100" />
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 rounded-lg p-2.5">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">Base Cost</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    ${(results.subtotal / 1000).toFixed(0)}k
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-2.5">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">Contingency</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    ${(results.contingency / 1000).toFixed(0)}k
+                  </p>
+                </div>
+              </div>
+
+              {/* Reset hint */}
+              {totalDiff !== 0 && (
+                <p className="text-[10px] text-center text-slate-400">
+                  Comparing to your original estimate
+                </p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -199,6 +278,7 @@ export default function PresentationPage() {
   const [showCustomization, setShowCustomization] = useState(false);
   const [showBudgetWidget, setShowBudgetWidget] = useState(true);
   const [initialResults, setInitialResults] = useState<ReturnType<typeof calculateProjectCosts> | null>(null);
+  const isMobile = useIsMobile();
 
   const state = useMemo(() => {
     const params = new URLSearchParams(search);
@@ -398,12 +478,13 @@ export default function PresentationPage() {
             results={results}
             initialResults={initialResults}
             onClose={() => setShowBudgetWidget(false)}
+            isMobile={isMobile}
           />
         )}
       </AnimatePresence>
 
       <motion.div
-        className="max-w-5xl mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12 space-y-10 md:space-y-16 relative z-10"
+        className={`max-w-5xl mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12 space-y-10 md:space-y-16 relative z-10 ${showCustomization && showBudgetWidget && isMobile ? 'pb-36' : ''}`}
         initial="hidden"
         animate="visible"
         variants={containerVariants}
@@ -508,8 +589,8 @@ export default function PresentationPage() {
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Bar Chart - More intuitive for comparing categories */}
             <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-sm overflow-hidden">
-              <CardContent className="p-6">
-                <div className="h-[350px]">
+              <CardContent className="p-4 md:p-6">
+                <div className="h-[280px] md:h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={sortedChartData}

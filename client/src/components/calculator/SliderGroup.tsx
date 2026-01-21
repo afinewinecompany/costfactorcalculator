@@ -39,14 +39,14 @@ export function SliderGroup({ title, sliders, values, onValueChange, defaultOpen
     >
       <AccordionItem value={title} className="border-b-0">
         <AccordionTrigger className={cn(
-          "px-6 py-5 hover:no-underline transition-all duration-300",
+          "px-4 md:px-6 py-4 md:py-5 hover:no-underline transition-all duration-300",
           clientMode
             ? "hover:bg-[#2F739E]/5 data-[state=open]:bg-[#2F739E]/5"
             : "hover:bg-muted/50"
         )}>
           <div className="flex items-center gap-3">
             <span className={cn(
-              "font-semibold text-lg",
+              "font-semibold text-base md:text-lg",
               clientMode ? "text-slate-800" : "text-foreground"
             )}>
               {title}
@@ -64,7 +64,7 @@ export function SliderGroup({ title, sliders, values, onValueChange, defaultOpen
             </Badge>
           </div>
         </AccordionTrigger>
-        <AccordionContent className="px-6 pb-8 pt-4 space-y-8">
+        <AccordionContent className="px-4 md:px-6 pb-6 md:pb-8 pt-3 md:pt-4 space-y-6 md:space-y-8">
           {sliders.map((slider, index) => {
             const currentValue = values[slider.id] ?? 50;
             const currentFactor = sliderToFactor(currentValue, slider.lowFactor, slider.highFactor);
