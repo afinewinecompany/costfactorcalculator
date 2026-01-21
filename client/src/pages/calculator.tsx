@@ -62,7 +62,7 @@ export default function CalculatorPage() {
               className="h-8 w-auto"
             />
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Cost Factor Calculator
+              Budget Breakdown
             </h1>
             <div className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 text-xs font-medium text-slate-500 flex items-center gap-1 border border-slate-200">
               <Settings2 className="h-3 w-3" />

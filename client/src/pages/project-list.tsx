@@ -83,7 +83,7 @@ export default function ProjectListPage() {
             />
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Cost Factor Calculator
+                Budget Breakdown
               </h1>
               <p className="text-xs text-muted-foreground">Project Management</p>
             </div>
