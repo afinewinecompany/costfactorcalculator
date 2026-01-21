@@ -6,8 +6,8 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
 export default defineConfig({
-  // For GitHub Pages deployment - change 'costfactorcalculator' to your repo name
-  base: process.env.NODE_ENV === 'production' ? '/costfactorcalculator/' : '/',
+  // Use root path for custom domain deployment
+  base: '/',
   plugins: [
     react(),
     runtimeErrorOverlay(),
