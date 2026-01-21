@@ -5,6 +5,7 @@ import { SliderGroup } from "@/components/calculator/SliderGroup";
 import { CostProjection } from "@/components/calculator/CostProjection";
 import { SummaryTable } from "@/components/calculator/SummaryTable";
 import { BaseCostsSettings } from "@/components/calculator/BaseCostsSettings";
+import { AdminSection } from "@/components/calculator/AdminSection";
 import { calculateProjectCosts, getInitialSliderValues } from "@/lib/calculator-engine";
 import { INITIAL_SLIDERS, BASE_VALUES_PER_RSF } from "@/lib/calculator-constants";
 import { ProjectInput, BaseValues } from "@/lib/calculator-types";
@@ -151,6 +152,11 @@ export default function CalculatorPage() {
 
             <section>
               <SummaryTable output={results} />
+            </section>
+
+            {/* Admin Section - Hidden from client view, at the bottom */}
+            <section className="mt-12 pt-8 border-t border-dashed border-slate-300">
+              <AdminSection />
             </section>
           </div>
 

@@ -73,15 +73,41 @@ export function SummaryTable({ output }: SummaryTableProps) {
               </TableCell>
             </TableRow>
 
+            <TableRow className="bg-muted/10">
+              <TableCell colSpan={2} className="font-semibold">Grand Total</TableCell>
+              <TableCell className="text-right font-mono font-semibold">
+                ${output.grandTotalPerRSF.toFixed(2)}
+              </TableCell>
+              <TableCell className="text-right font-mono font-semibold">
+                ${output.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </TableCell>
+            </TableRow>
+
+            {output.tiAllowanceTotal > 0 && (
+              <TableRow className="bg-emerald-50">
+                <TableCell colSpan={2} className="text-emerald-700 font-medium">
+                  TI Allowance (${output.tiAllowancePerSF.toFixed(2)}/SF)
+                </TableCell>
+                <TableCell className="text-right font-mono text-emerald-600">
+                  -${output.tiAllowancePerSF.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-emerald-600 font-medium">
+                  -${output.tiAllowanceTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </TableCell>
+              </TableRow>
+            )}
+
           </TableBody>
           <TableFooter className="bg-primary/5">
             <TableRow>
-              <TableCell colSpan={2} className="text-lg font-bold text-primary">Grand Total</TableCell>
-              <TableCell className="text-right text-lg font-bold font-mono text-primary">
-                ${output.grandTotalPerRSF.toFixed(2)}
+              <TableCell colSpan={2} className="text-lg font-bold text-primary">
+                {output.tiAllowanceTotal > 0 ? 'Client Investment' : 'Grand Total'}
               </TableCell>
               <TableCell className="text-right text-lg font-bold font-mono text-primary">
-                ${output.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                ${(output.tiAllowanceTotal > 0 ? output.clientTotalPerRSF : output.grandTotalPerRSF).toFixed(2)}
+              </TableCell>
+              <TableCell className="text-right text-lg font-bold font-mono text-primary">
+                ${(output.tiAllowanceTotal > 0 ? output.clientTotal : output.grandTotal).toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </TableCell>
             </TableRow>
           </TableFooter>

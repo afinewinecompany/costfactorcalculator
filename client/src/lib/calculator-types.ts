@@ -3,6 +3,7 @@ export interface ProjectInput {
   projectSize: number; // RSF
   floors: number;
   location: string;
+  tiAllowancePerSF?: number; // TI Allowance in $/SF - reduces total cost to client
 }
 
 export interface SliderConfig {
@@ -33,6 +34,11 @@ export interface ProjectOutput {
   grandTotal: number;
   baseTotalPerRSF: number;
   grandTotalPerRSF: number;
+  // TI Allowance fields
+  tiAllowancePerSF: number;
+  tiAllowanceTotal: number;
+  clientTotal: number; // grandTotal - tiAllowanceTotal
+  clientTotalPerRSF: number;
 }
 
 export interface BaseValues {

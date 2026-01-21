@@ -134,13 +134,19 @@ export function calculateProjectCosts(
 
   // Base Totals (for reference/projection)
   // Sum of all base values
-  const totalBasePerRSF = 
-    baseValues.constructionCosts + 
-    baseValues.designFees + 
-    baseValues.ffeAppliances + 
-    baseValues.signage + 
-    techBase + 
+  const totalBasePerRSF =
+    baseValues.constructionCosts +
+    baseValues.designFees +
+    baseValues.ffeAppliances +
+    baseValues.signage +
+    techBase +
     baseValues.other;
+
+  // TI Allowance calculations
+  const tiAllowancePerSF = inputs.tiAllowancePerSF ?? 0;
+  const tiAllowanceTotal = tiAllowancePerSF * inputs.projectSize;
+  const clientTotal = grandTotal - tiAllowanceTotal;
+  const clientTotalPerRSF = clientTotal / inputs.projectSize;
 
   return {
     uniqueProjectFactor,
@@ -150,7 +156,12 @@ export function calculateProjectCosts(
     contingency,
     grandTotal,
     baseTotalPerRSF: totalBasePerRSF,
-    grandTotalPerRSF: grandTotal / inputs.projectSize
+    grandTotalPerRSF: grandTotal / inputs.projectSize,
+    // TI Allowance
+    tiAllowancePerSF,
+    tiAllowanceTotal,
+    clientTotal,
+    clientTotalPerRSF
   };
 }
 

@@ -517,6 +517,12 @@ export default function PresentationPage() {
               <Layers className="h-4 w-4 text-[#2F739E]" />
               <span>{inputs.floors} Floor{inputs.floors > 1 ? 's' : ''}</span>
             </div>
+            {results.tiAllowancePerSF > 0 && (
+              <div className="flex items-center gap-2 bg-emerald-50 backdrop-blur-sm px-4 py-2 rounded-full border border-emerald-200/60 shadow-sm text-sm text-emerald-700">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+                <span>TI Allowance: ${results.tiAllowancePerSF.toFixed(2)}/SF</span>
+              </div>
+            )}
           </div>
         </motion.section>
 
@@ -537,17 +543,17 @@ export default function PresentationPage() {
               <div className="grid md:grid-cols-2 gap-8 items-center">
                 <div className="space-y-4">
                   <p className="text-white/70 text-sm font-medium uppercase tracking-wider">
-                    Estimated Total Investment
+                    {results.tiAllowanceTotal > 0 ? 'Your Investment (After TI Allowance)' : 'Estimated Total Investment'}
                   </p>
                   <div className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                    ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    ${(results.tiAllowanceTotal > 0 ? results.clientTotal : results.grandTotal).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </div>
                   <p className="text-white/80 text-lg">
-                    <span className="font-semibold">${results.grandTotalPerRSF.toFixed(2)}</span> per square foot
+                    <span className="font-semibold">${(results.tiAllowanceTotal > 0 ? results.clientTotalPerRSF : results.grandTotalPerRSF).toFixed(2)}</span> per square foot
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className={`grid ${results.tiAllowanceTotal > 0 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'} gap-4`}>
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                     <div className="flex items-center gap-2 text-white/70 text-xs font-medium uppercase tracking-wider mb-2">
                       <DollarSign className="w-4 h-4" />
@@ -569,6 +575,20 @@ export default function PresentationPage() {
                       {(results.contingencyPercent * 100).toFixed(0)}% safety buffer
                     </div>
                   </div>
+                  {results.tiAllowanceTotal > 0 && (
+                    <div className="bg-emerald-500/20 backdrop-blur-sm rounded-xl p-4 border border-emerald-400/30">
+                      <div className="flex items-center gap-2 text-emerald-200 text-xs font-medium uppercase tracking-wider mb-2">
+                        <TrendingUp className="w-4 h-4" />
+                        TI Allowance
+                      </div>
+                      <div className="text-2xl font-bold text-emerald-100">
+                        -${results.tiAllowanceTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </div>
+                      <div className="text-emerald-200/70 text-xs mt-1">
+                        ${results.tiAllowancePerSF.toFixed(2)}/SF credit
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -928,16 +948,56 @@ export default function PresentationPage() {
                     </td>
                     <td className="px-6 py-4 text-right text-slate-500">—</td>
                   </tr>
-                  <tr className="bg-[#2F739E]/5 font-bold border-t-2 border-[#2F739E]/20">
-                    <td className="px-6 py-5 text-[#2F739E] text-base">Grand Total</td>
-                    <td className="px-6 py-5 text-right font-mono text-[#2F739E] text-base">
+                  <tr className="bg-slate-100/50 font-semibold">
+                    <td className="px-6 py-4 text-slate-900">Grand Total</td>
+                    <td className="px-6 py-4 text-right font-mono text-slate-900">
                       ${results.grandTotalPerRSF.toFixed(2)}
                     </td>
-                    <td className="px-6 py-5 text-right font-mono text-[#2F739E] text-base">
+                    <td className="px-6 py-4 text-right font-mono text-slate-900">
                       ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </td>
-                    <td className="px-6 py-5"></td>
+                    <td className="px-6 py-4"></td>
                   </tr>
+                  {results.tiAllowanceTotal > 0 && (
+                    <>
+                      <tr className="bg-emerald-50/50">
+                        <td className="px-6 py-4 text-emerald-700 font-medium">
+                          TI Allowance (${results.tiAllowancePerSF.toFixed(2)}/SF)
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-emerald-600">
+                          -${results.tiAllowancePerSF.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-emerald-600 font-medium">
+                          -${results.tiAllowanceTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </td>
+                        <td className="px-6 py-4 text-right text-emerald-500 text-xs">
+                          Building owner credit
+                        </td>
+                      </tr>
+                      <tr className="bg-[#2F739E]/5 font-bold border-t-2 border-[#2F739E]/20">
+                        <td className="px-6 py-5 text-[#2F739E] text-base">Your Investment</td>
+                        <td className="px-6 py-5 text-right font-mono text-[#2F739E] text-base">
+                          ${results.clientTotalPerRSF.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-5 text-right font-mono text-[#2F739E] text-base">
+                          ${results.clientTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </td>
+                        <td className="px-6 py-5"></td>
+                      </tr>
+                    </>
+                  )}
+                  {results.tiAllowanceTotal === 0 && (
+                    <tr className="bg-[#2F739E]/5 font-bold border-t-2 border-[#2F739E]/20">
+                      <td className="px-6 py-5 text-[#2F739E] text-base">Your Investment</td>
+                      <td className="px-6 py-5 text-right font-mono text-[#2F739E] text-base">
+                        ${results.grandTotalPerRSF.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-5 text-right font-mono text-[#2F739E] text-base">
+                        ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </td>
+                      <td className="px-6 py-5"></td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

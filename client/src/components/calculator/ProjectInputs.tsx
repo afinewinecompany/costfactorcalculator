@@ -11,7 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectInput } from "@/lib/calculator-types";
 import { LOCATIONS } from "@/lib/calculator-constants";
-import { Building, MapPin, Ruler } from "lucide-react";
+import { Building, DollarSign, MapPin, Ruler } from "lucide-react";
 
 interface ProjectInputsProps {
   input: ProjectInput;
@@ -97,6 +97,26 @@ export function ProjectInputs({ input, onChange }: ProjectInputsProps) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="tiAllowance">TI Allowance ($/SF)</Label>
+          <p className="text-xs text-muted-foreground">
+            Tenant Improvement allowance from building owner that reduces the client's total cost
+          </p>
+          <div className="relative max-w-xs">
+            <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="tiAllowance"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={input.tiAllowancePerSF ?? ""}
+              onChange={(e) => handleChange("tiAllowancePerSF", e.target.value ? Number(e.target.value) : undefined)}
+              className="pl-9 bg-white"
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
