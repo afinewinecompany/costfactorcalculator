@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { decodeState, encodeState } from "@/lib/url-state";
 import { calculateProjectCosts } from "@/lib/calculator-engine";
@@ -7,9 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SliderGroup } from "@/components/calculator/SliderGroup";
 import {
-  PieChart,
-  Pie,
-  Cell,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
   BarChart,
@@ -34,17 +31,174 @@ import {
   CheckCircle2,
   DollarSign,
   Layers,
-  Zap
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+  X
 } from "lucide-react";
 import { motion, Variants, AnimatePresence } from "framer-motion";
 
 // Connected Workplaces brand-aligned color palette
 const COLORS = ['#2F739E', '#4A90B8', '#6BB6D6', '#8FCCE8', '#B3DDF2', '#D6EEFA'];
 
+// Budget Summary Widget Component
+interface BudgetSummaryWidgetProps {
+  results: ReturnType<typeof calculateProjectCosts>;
+  initialResults: ReturnType<typeof calculateProjectCosts> | null;
+  onClose: () => void;
+}
+
+function BudgetSummaryWidget({ results, initialResults, onClose }: BudgetSummaryWidgetProps) {
+  const totalDiff = initialResults ? results.grandTotal - initialResults.grandTotal : 0;
+  const percentChange = initialResults && initialResults.grandTotal > 0
+    ? ((totalDiff / initialResults.grandTotal) * 100)
+    : 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 100, scale: 0.9 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 100, scale: 0.9 }}
+      transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      className="fixed right-4 top-24 z-30 w-72 print:hidden"
+    >
+      <Card className="bg-white/95 backdrop-blur-xl border-slate-200/60 shadow-2xl shadow-slate-900/10 overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#2F739E] to-[#4A90B8] px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-white/80" />
+            <span className="text-white font-semibold text-sm">Live Budget</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/60 hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <CardContent className="p-4 space-y-4">
+          {/* Total Budget */}
+          <div className="space-y-1">
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Investment</p>
+            <div className="flex items-end justify-between">
+              <motion.span
+                key={results.grandTotal}
+                initial={{ scale: 1.1, color: '#2F739E' }}
+                animate={{ scale: 1, color: '#0f172a' }}
+                className="text-2xl font-bold text-slate-900"
+              >
+                ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </motion.span>
+              {totalDiff !== 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex items-center gap-1 text-sm font-semibold ${
+                    totalDiff > 0 ? 'text-rose-500' : 'text-emerald-500'
+                  }`}
+                >
+                  {totalDiff > 0 ? (
+                    <ArrowUpRight className="w-4 h-4" />
+                  ) : (
+                    <ArrowDownRight className="w-4 h-4" />
+                  )}
+                  <span>{totalDiff > 0 ? '+' : ''}{percentChange.toFixed(1)}%</span>
+                </motion.div>
+              )}
+            </div>
+            <p className="text-xs text-slate-400">
+              ${results.grandTotalPerRSF.toFixed(2)} per sq ft
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-slate-100" />
+
+          {/* Category Breakdown - Compact */}
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">By Category</p>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {results.categories.map((cat, i) => {
+                const initialCat = initialResults?.categories.find(c => c.category === cat.category);
+                const catDiff = initialCat ? cat.totalCost - initialCat.totalCost : 0;
+
+                return (
+                  <motion.div
+                    key={cat.category}
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors"
+                    initial={false}
+                    animate={{
+                      backgroundColor: catDiff !== 0 ? 'rgba(47, 115, 158, 0.05)' : 'transparent'
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                      />
+                      <span className="text-xs text-slate-600 truncate">{cat.category}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <motion.span
+                        key={cat.totalCost}
+                        initial={{ scale: 1.05 }}
+                        animate={{ scale: 1 }}
+                        className="text-xs font-medium text-slate-900"
+                      >
+                        ${(cat.totalCost / 1000).toFixed(0)}k
+                      </motion.span>
+                      {catDiff !== 0 && (
+                        <span className={`text-[10px] font-medium ${
+                          catDiff > 0 ? 'text-rose-500' : 'text-emerald-500'
+                        }`}>
+                          {catDiff > 0 ? '+' : ''}{((catDiff / (initialCat?.totalCost || 1)) * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-slate-100" />
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-50 rounded-lg p-2.5">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Base Cost</p>
+              <p className="text-sm font-semibold text-slate-900">
+                ${(results.subtotal / 1000).toFixed(0)}k
+              </p>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-2.5">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Contingency</p>
+              <p className="text-sm font-semibold text-slate-900">
+                ${(results.contingency / 1000).toFixed(0)}k
+              </p>
+            </div>
+          </div>
+
+          {/* Reset hint */}
+          {totalDiff !== 0 && (
+            <p className="text-[10px] text-center text-slate-400">
+              Comparing to your original estimate
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
 export default function PresentationPage() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const [showCustomization, setShowCustomization] = useState(false);
+  const [showBudgetWidget, setShowBudgetWidget] = useState(true);
+  const [initialResults, setInitialResults] = useState<ReturnType<typeof calculateProjectCosts> | null>(null);
 
   const state = useMemo(() => {
     const params = new URLSearchParams(search);
@@ -83,6 +237,14 @@ export default function PresentationPage() {
   const results = useMemo(() => {
     return calculateProjectCosts(inputs, sliderValues, baseValues);
   }, [inputs, sliderValues, baseValues]);
+
+  // Capture initial results when customization is first opened
+  useEffect(() => {
+    if (showCustomization && !initialResults) {
+      setInitialResults(results);
+      setShowBudgetWidget(true);
+    }
+  }, [showCustomization, initialResults, results]);
 
   // Update URL when sliders change (for sharing current state)
   useEffect(() => {
@@ -228,6 +390,17 @@ export default function PresentationPage() {
           </Button>
         </motion.div>
       </nav>
+
+      {/* Budget Summary Widget - Shows when customizing */}
+      <AnimatePresence>
+        {showCustomization && showBudgetWidget && (
+          <BudgetSummaryWidget
+            results={results}
+            initialResults={initialResults}
+            onClose={() => setShowBudgetWidget(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <motion.div
         className="max-w-5xl mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12 space-y-10 md:space-y-16 relative z-10"
