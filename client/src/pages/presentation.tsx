@@ -42,6 +42,14 @@ import { motion, Variants, AnimatePresence } from "framer-motion";
 // Connected Workplaces brand-aligned color palette
 const COLORS = ['#2F739E', '#4A90B8', '#6BB6D6', '#8FCCE8', '#B3DDF2', '#D6EEFA'];
 
+// Format large numbers: $6,734,000 -> $6.73M, $132,000 -> $132k
+function formatCompactCurrency(value: number): string {
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(2)}M`;
+  }
+  return `$${(value / 1000).toFixed(0)}k`;
+}
+
 // Budget Summary Widget Component
 interface BudgetSummaryWidgetProps {
   results: ReturnType<typeof calculateProjectCosts>;
@@ -131,19 +139,27 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
               </div>
 
               {/* Quick Stats - Horizontal on mobile */}
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <div className="flex-1 bg-slate-50 rounded-lg p-2 text-center">
                   <p className="text-[9px] text-slate-500 uppercase tracking-wider">Base</p>
                   <p className="text-sm font-semibold text-slate-900">
-                    ${(results.subtotal / 1000).toFixed(0)}k
+                    {formatCompactCurrency(results.subtotal)}
                   </p>
                 </div>
                 <div className="flex-1 bg-slate-50 rounded-lg p-2 text-center">
                   <p className="text-[9px] text-slate-500 uppercase tracking-wider">Contingency</p>
                   <p className="text-sm font-semibold text-slate-900">
-                    ${(results.contingency / 1000).toFixed(0)}k
+                    {formatCompactCurrency(results.contingency)}
                   </p>
                 </div>
+                {results.tiAllowanceTotal > 0 && (
+                  <div className="flex-1 bg-emerald-50 rounded-lg p-2 text-center">
+                    <p className="text-[9px] text-emerald-600 uppercase tracking-wider">TI</p>
+                    <p className="text-sm font-semibold text-emerald-700">
+                      -{formatCompactCurrency(results.tiAllowanceTotal)}
+                    </p>
+                  </div>
+                )}
                 <div className="flex-1 bg-slate-50 rounded-lg p-2 text-center">
                   <p className="text-[9px] text-slate-500 uppercase tracking-wider">Per SF</p>
                   <p className="text-sm font-semibold text-slate-900">
@@ -223,7 +239,7 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
                             animate={{ scale: 1 }}
                             className="text-xs font-medium text-slate-900"
                           >
-                            ${(cat.totalCost / 1000).toFixed(0)}k
+                            {formatCompactCurrency(cat.totalCost)}
                           </motion.span>
                           {catDiff !== 0 && (
                             <span className={`text-[10px] font-medium ${
@@ -243,19 +259,27 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
               <div className="h-px bg-slate-100" />
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid ${results.tiAllowanceTotal > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
                 <div className="bg-slate-50 rounded-lg p-2.5">
                   <p className="text-[10px] text-slate-500 uppercase tracking-wider">Base Cost</p>
                   <p className="text-sm font-semibold text-slate-900">
-                    ${(results.subtotal / 1000).toFixed(0)}k
+                    {formatCompactCurrency(results.subtotal)}
                   </p>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-2.5">
                   <p className="text-[10px] text-slate-500 uppercase tracking-wider">Contingency</p>
                   <p className="text-sm font-semibold text-slate-900">
-                    ${(results.contingency / 1000).toFixed(0)}k
+                    {formatCompactCurrency(results.contingency)}
                   </p>
                 </div>
+                {results.tiAllowanceTotal > 0 && (
+                  <div className="bg-emerald-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-emerald-600 uppercase tracking-wider">TI Allowance</p>
+                    <p className="text-sm font-semibold text-emerald-700">
+                      -{formatCompactCurrency(results.tiAllowanceTotal)}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Reset hint */}
@@ -553,39 +577,39 @@ export default function PresentationPage() {
                   </p>
                 </div>
 
-                <div className={`grid ${results.tiAllowanceTotal > 0 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'} gap-4`}>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                    <div className="flex items-center gap-2 text-white/70 text-xs font-medium uppercase tracking-wider mb-2">
-                      <DollarSign className="w-4 h-4" />
-                      Base Cost
+                <div className={`grid ${results.tiAllowanceTotal > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 min-w-0">
+                    <div className="flex items-center gap-1.5 text-white/70 text-[10px] font-medium uppercase tracking-wider mb-1">
+                      <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">Base Cost</span>
                     </div>
-                    <div className="text-2xl font-bold">
-                      ${results.subtotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    <div className="text-lg md:text-xl font-bold truncate">
+                      {formatCompactCurrency(results.subtotal)}
                     </div>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                    <div className="flex items-center gap-2 text-white/70 text-xs font-medium uppercase tracking-wider mb-2">
-                      <Shield className="w-4 h-4" />
-                      Contingency
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 min-w-0">
+                    <div className="flex items-center gap-1.5 text-white/70 text-[10px] font-medium uppercase tracking-wider mb-1">
+                      <Shield className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">Contingency</span>
                     </div>
-                    <div className="text-2xl font-bold">
-                      ${results.contingency.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    <div className="text-lg md:text-xl font-bold truncate">
+                      {formatCompactCurrency(results.contingency)}
                     </div>
-                    <div className="text-white/60 text-xs mt-1">
-                      {(results.contingencyPercent * 100).toFixed(0)}% safety buffer
+                    <div className="text-white/60 text-[10px] mt-0.5">
+                      {(results.contingencyPercent * 100).toFixed(0)}% buffer
                     </div>
                   </div>
                   {results.tiAllowanceTotal > 0 && (
-                    <div className="bg-emerald-500/20 backdrop-blur-sm rounded-xl p-4 border border-emerald-400/30">
-                      <div className="flex items-center gap-2 text-emerald-200 text-xs font-medium uppercase tracking-wider mb-2">
-                        <TrendingUp className="w-4 h-4" />
-                        TI Allowance
+                    <div className="bg-emerald-500/20 backdrop-blur-sm rounded-xl p-3 border border-emerald-400/30 min-w-0">
+                      <div className="flex items-center gap-1.5 text-emerald-200 text-[10px] font-medium uppercase tracking-wider mb-1">
+                        <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">TI Allowance</span>
                       </div>
-                      <div className="text-2xl font-bold text-emerald-100">
-                        -${results.tiAllowanceTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      <div className="text-lg md:text-xl font-bold text-emerald-100 truncate">
+                        -{formatCompactCurrency(results.tiAllowanceTotal)}
                       </div>
-                      <div className="text-emerald-200/70 text-xs mt-1">
-                        ${results.tiAllowancePerSF.toFixed(2)}/SF credit
+                      <div className="text-emerald-200/70 text-[10px] mt-0.5">
+                        ${results.tiAllowancePerSF.toFixed(2)}/SF
                       </div>
                     </div>
                   )}
