@@ -1,15 +1,13 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useSearch } from "wouter";
 import { decodeState, encodeState } from "@/lib/url-state";
 import { calculateProjectCosts } from "@/lib/calculator-engine";
 import { INITIAL_SLIDERS } from "@/lib/calculator-constants";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { SliderGroup } from "@/components/calculator/SliderGroup";
+import { FloatingSaveWidget } from "@/components/calculator/FloatingSaveWidget";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -40,11 +38,7 @@ import {
   Zap,
   ArrowUpRight,
   ArrowDownRight,
-  X,
-  Save,
-  Loader2,
-  BookmarkCheck,
-  GitCompare
+  X
 } from "lucide-react";
 import { motion, Variants, AnimatePresence } from "framer-motion";
 
@@ -315,12 +309,15 @@ export default function PresentationPage() {
   const { toast } = useToast();
 
   // Save estimate state
-  const [showSaveSection, setShowSaveSection] = useState(false);
   const [estimateName, setEstimateName] = useState("");
   const [estimateDescription, setEstimateDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [savedEstimateId, setSavedEstimateId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+
+  // Track unsaved changes - reference to last saved slider values
+  const lastSavedSliderValuesRef = useRef<Record<string, number> | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const state = useMemo(() => {
     const params = new URLSearchParams(search);
@@ -328,6 +325,15 @@ export default function PresentationPage() {
     if (!data) return null;
     return decodeState(data);
   }, [search]);
+
+  // Initialize projectId from URL query parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const urlProjectId = params.get("projectId");
+    if (urlProjectId && !projectId) {
+      setProjectId(urlProjectId);
+    }
+  }, [search, projectId]);
 
   useEffect(() => {
     if (!state) {
@@ -349,6 +355,8 @@ export default function PresentationPage() {
 
   const handleSliderChange = (id: string, value: number) => {
     setSliderValues((prev) => ({ ...prev, [id]: value }));
+    // Mark as having unsaved changes when sliders change
+    setHasUnsavedChanges(true);
   };
 
   // Inputs and baseValues remain read-only from URL
@@ -369,12 +377,17 @@ export default function PresentationPage() {
   }, [showCustomization, initialResults, results]);
 
   // Update URL when sliders change (for sharing current state)
+  // Also preserve projectId in URL if it exists
   useEffect(() => {
     if (state && Object.keys(sliderValues).length > 0) {
       const stateString = encodeState(inputs, sliderValues, baseValues);
-      window.history.replaceState(null, '', `${window.location.pathname}?data=${stateString}`);
+      let newUrl = `${window.location.pathname}?data=${stateString}`;
+      if (projectId) {
+        newUrl += `&projectId=${projectId}`;
+      }
+      window.history.replaceState(null, '', newUrl);
     }
-  }, [sliderValues, inputs, baseValues, state]);
+  }, [sliderValues, inputs, baseValues, state, projectId]);
 
   // Handle saving the estimate
   const handleSaveEstimate = async () => {
@@ -434,14 +447,22 @@ export default function PresentationPage() {
         const result = await response.json();
 
         // Store the project ID for future saves
-        setProjectId(result.project.id);
+        const newProjectId = result.project.id;
+        setProjectId(newProjectId);
         savedEstimate = result.estimate;
+
+        // Update URL to include projectId for persistence across refreshes
+        const stateString = encodeState(inputs, sliderValues, baseValues);
+        const newUrl = `${window.location.pathname}?data=${stateString}&projectId=${newProjectId}`;
+        window.history.replaceState(null, '', newUrl);
       }
 
       setSavedEstimateId(savedEstimate.id);
-      setShowSaveSection(false);
       setEstimateName("");
       setEstimateDescription("");
+      // Reset unsaved changes tracking
+      lastSavedSliderValuesRef.current = { ...sliderValues };
+      setHasUnsavedChanges(false);
 
       toast({
         title: "Estimate Saved",
@@ -608,8 +629,28 @@ export default function PresentationPage() {
         )}
       </AnimatePresence>
 
+      {/* Floating Save Widget - Always visible */}
+      <FloatingSaveWidget
+        results={results}
+        isMobile={isMobile}
+        hasUnsavedChanges={hasUnsavedChanges}
+        savedEstimateId={savedEstimateId}
+        projectId={projectId}
+        estimateName={estimateName}
+        estimateDescription={estimateDescription}
+        isSaving={isSaving}
+        onEstimateNameChange={setEstimateName}
+        onEstimateDescriptionChange={setEstimateDescription}
+        onSaveEstimate={handleSaveEstimate}
+        onNavigateToCompare={() => setLocation(`/compare?project=${projectId}`)}
+        onResetSavedState={() => {
+          setSavedEstimateId(null);
+          setHasUnsavedChanges(true);
+        }}
+      />
+
       <motion.div
-        className={`max-w-5xl mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12 space-y-10 md:space-y-16 relative z-10 ${showCustomization && showBudgetWidget && isMobile ? 'pb-36' : ''}`}
+        className={`max-w-5xl mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12 space-y-10 md:space-y-16 relative z-10 ${isMobile ? 'pb-44' : 'pb-8'} ${showCustomization && showBudgetWidget && isMobile ? 'pb-72' : ''}`}
         initial="hidden"
         animate="visible"
         variants={containerVariants}
@@ -950,161 +991,6 @@ export default function PresentationPage() {
                   clientMode={true}
                   defaultOpen={false}
                 />
-
-                {/* Save Estimate Section - Inside Customization */}
-                <Card className="mt-6 bg-gradient-to-br from-white to-slate-50 border-slate-200/60 shadow-md overflow-hidden">
-                  <CardContent className="p-6">
-                    {savedEstimateId ? (
-                      // Already saved - show success state
-                      <div className="text-center space-y-4">
-                        <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 flex items-center justify-center">
-                          <BookmarkCheck className="w-6 h-6 text-emerald-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-slate-900">Estimate Saved!</h4>
-                          <p className="text-sm text-slate-500 mt-1">
-                            You can save another version with different options
-                          </p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setSavedEstimateId(null);
-                              setShowSaveSection(true);
-                            }}
-                            className="border-slate-300"
-                          >
-                            <Save className="w-4 h-4 mr-2" />
-                            Save New Version
-                          </Button>
-                          <Button
-                            onClick={() => setLocation(`/compare?project=${projectId}`)}
-                            className="bg-[#2F739E] hover:bg-[#1d5a7d]"
-                          >
-                            <GitCompare className="w-4 h-4 mr-2" />
-                            Compare Estimates
-                          </Button>
-                        </div>
-                      </div>
-                    ) : !showSaveSection ? (
-                      // Initial state - show CTA to save
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="text-center sm:text-left">
-                          <h4 className="font-semibold text-slate-900 flex items-center gap-2 justify-center sm:justify-start">
-                            <Save className="w-4 h-4 text-[#2F739E]" />
-                            Save This Configuration
-                          </h4>
-                          <p className="text-sm text-slate-500 mt-1">
-                            Save your customized budget to compare different options
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => setShowSaveSection(true)}
-                          className="bg-[#2F739E] hover:bg-[#1d5a7d] whitespace-nowrap"
-                        >
-                          Save Estimate
-                        </Button>
-                      </div>
-                    ) : (
-                      // Save form
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-semibold text-slate-900 flex items-center gap-2">
-                            <Save className="w-4 h-4 text-[#2F739E]" />
-                            Save Your Estimate
-                          </h4>
-                          <button
-                            onClick={() => setShowSaveSection(false)}
-                            className="text-slate-400 hover:text-slate-600 p-1"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div>
-                            <Label htmlFor="estimateName" className="text-sm text-slate-700">
-                              Estimate Name <span className="text-rose-500">*</span>
-                            </Label>
-                            <Input
-                              id="estimateName"
-                              placeholder="e.g., Option A - Premium Finishes"
-                              value={estimateName}
-                              onChange={(e) => setEstimateName(e.target.value)}
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="estimateDescription" className="text-sm text-slate-700">
-                              Notes (optional)
-                            </Label>
-                            <Textarea
-                              id="estimateDescription"
-                              placeholder="Add any notes about this estimate version..."
-                              value={estimateDescription}
-                              onChange={(e) => setEstimateDescription(e.target.value)}
-                              className="mt-1 resize-none"
-                              rows={2}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Summary of what's being saved */}
-                        <div className="bg-slate-50 rounded-lg p-3 space-y-1">
-                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">
-                            Saving snapshot with:
-                          </p>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                            <span className="text-slate-700">
-                              <strong className="text-[#2F739E]">${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> total
-                            </span>
-                            <span className="text-slate-700">
-                              <strong className="text-[#2F739E]">${results.grandTotalPerRSF.toFixed(0)}</strong>/SF
-                            </span>
-                            {results.tiAllowanceTotal > 0 && (
-                              <span className="text-emerald-700">
-                                <strong>${results.clientTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> after TI
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3 pt-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => setShowSaveSection(false)}
-                            className="flex-1"
-                            disabled={isSaving}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={handleSaveEstimate}
-                            disabled={isSaving || !estimateName.trim()}
-                            className="flex-1 bg-[#2F739E] hover:bg-[#1d5a7d]"
-                          >
-                            {isSaving ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Saving...
-                              </>
-                            ) : (
-                              <>
-                                <Save className="w-4 h-4 mr-2" />
-                                Save Estimate
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </CardContent>
-                </Card>
               </motion.div>
             )}
           </AnimatePresence>

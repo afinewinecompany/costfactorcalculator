@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,8 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   Legend,
+  PieChart,
+  Pie,
   Cell,
 } from "recharts";
 import {
@@ -33,6 +35,22 @@ import {
   Layers,
   BarChart3,
   Loader2,
+  Award,
+  Star,
+  Crown,
+  Zap,
+  Target,
+  ArrowRight,
+  ThumbsUp,
+  ThumbsDown,
+  Info,
+  Share2,
+  Lightbulb,
+  PiggyBank,
+  CircleDollarSign,
+  BadgeCheck,
+  ShieldCheck,
+  Wallet,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SavedEstimate } from "@shared/schema";
@@ -48,9 +66,42 @@ const ESTIMATE_COLORS = [
 // Category colors for charts
 const CATEGORY_COLORS = ["#2F739E", "#4A90B8", "#6BB6D6", "#8FCCE8", "#B3DDF2", "#D6EEFA"];
 
+// Estimate classification types
+type EstimateClassification = "best-value" | "premium" | "budget-friendly" | "balanced";
+
 interface EstimateWithColors extends SavedEstimate {
   color: typeof ESTIMATE_COLORS[number];
   colorIndex: number;
+  classification?: EstimateClassification;
+}
+
+interface ActionableInsight {
+  type: "savings" | "warning" | "info" | "recommendation";
+  title: string;
+  text: string;
+  explanation?: string;
+  impact?: "high" | "medium" | "low";
+  category?: string;
+  savingsAmount?: number;
+  percentDiff?: number;
+}
+
+interface EstimateProscons {
+  estimateId: string;
+  estimateName: string;
+  pros: string[];
+  cons: string[];
+  premiumFeatures?: string[];
+}
+
+interface CategoryImpact {
+  category: string;
+  minValue: number;
+  maxValue: number;
+  difference: number;
+  percentDiff: number;
+  lowestEstimateName: string;
+  highestEstimateName: string;
 }
 
 function formatCurrency(value: number): string {
@@ -61,12 +112,69 @@ function formatCompactCurrency(value: number): string {
   if (value >= 1000000) {
     return `$${(value / 1000000).toFixed(2)}M`;
   }
-  return `$${(value / 1000).toFixed(0)}k`;
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(0)}k`;
+  }
+  return `$${value.toFixed(0)}`;
 }
 
 function getPercentDiff(base: number, compare: number): number {
   if (base === 0) return 0;
   return ((compare - base) / base) * 100;
+}
+
+// Classify an estimate based on its position relative to others
+function classifyEstimate(
+  estimate: SavedEstimate,
+  allEstimates: SavedEstimate[],
+  lowestTotal: number,
+  highestTotal: number
+): EstimateClassification {
+  const total = Number(estimate.grandTotal);
+  const range = highestTotal - lowestTotal;
+
+  if (range === 0) return "balanced";
+
+  const position = (total - lowestTotal) / range;
+
+  if (position <= 0.1) return "budget-friendly";
+  if (position >= 0.85) return "premium";
+  if (position <= 0.4) return "best-value";
+  return "balanced";
+}
+
+// Get badge styling based on classification
+function getClassificationBadge(classification: EstimateClassification) {
+  switch (classification) {
+    case "best-value":
+      return {
+        label: "Best Value",
+        icon: Award,
+        bgClass: "bg-emerald-100 text-emerald-700 border-emerald-200",
+        iconClass: "text-emerald-600",
+      };
+    case "premium":
+      return {
+        label: "Premium",
+        icon: Crown,
+        bgClass: "bg-amber-100 text-amber-700 border-amber-200",
+        iconClass: "text-amber-600",
+      };
+    case "budget-friendly":
+      return {
+        label: "Budget Friendly",
+        icon: PiggyBank,
+        bgClass: "bg-blue-100 text-blue-700 border-blue-200",
+        iconClass: "text-blue-600",
+      };
+    case "balanced":
+      return {
+        label: "Balanced",
+        icon: Scale,
+        bgClass: "bg-slate-100 text-slate-700 border-slate-200",
+        iconClass: "text-slate-600",
+      };
+  }
 }
 
 export default function ComparisonPage() {
@@ -79,6 +187,7 @@ export default function ComparisonPage() {
   const [selectedEstimateIds, setSelectedEstimateIds] = useState<string[]>(preselectedIds);
   const [showEstimateSelector, setShowEstimateSelector] = useState(true);
   const [expandedInsights, setExpandedInsights] = useState(true);
+  const [expandedDecisionHelper, setExpandedDecisionHelper] = useState(true);
 
   // Fetch project with all its estimates
   const { data: projectData, isLoading: projectLoading } = useQuery({
@@ -104,13 +213,23 @@ export default function ComparisonPage() {
     enabled: selectedEstimateIds.length > 0,
   });
 
-  // Add colors to selected estimates
+  // Add colors and classifications to selected estimates
   const coloredEstimates: EstimateWithColors[] = useMemo(() => {
-    if (!selectedEstimates) return [];
+    if (!selectedEstimates || selectedEstimates.length < 2) return selectedEstimates?.map((est: SavedEstimate, i: number) => ({
+      ...est,
+      color: ESTIMATE_COLORS[i % ESTIMATE_COLORS.length],
+      colorIndex: i,
+    })) || [];
+
+    const totals = selectedEstimates.map((e: SavedEstimate) => Number(e.grandTotal));
+    const minTotal = Math.min(...totals);
+    const maxTotal = Math.max(...totals);
+
     return selectedEstimates.map((est: SavedEstimate, i: number) => ({
       ...est,
       color: ESTIMATE_COLORS[i % ESTIMATE_COLORS.length],
       colorIndex: i,
+      classification: classifyEstimate(est, selectedEstimates, minTotal, maxTotal),
     }));
   }, [selectedEstimates]);
 
@@ -121,7 +240,7 @@ export default function ComparisonPage() {
     }
   }, [selectedEstimateIds.length]);
 
-  // Calculate comparison data
+  // Calculate comprehensive comparison data
   const comparisonData = useMemo(() => {
     if (coloredEstimates.length < 2) return null;
 
@@ -130,10 +249,18 @@ export default function ComparisonPage() {
 
     // Find min/max totals
     const totals = estimates.map((e) => Number(e.grandTotal));
+    const clientTotals = estimates.map((e) => Number(e.clientTotal));
     const minTotal = Math.min(...totals);
     const maxTotal = Math.max(...totals);
     const lowestIndex = totals.indexOf(minTotal);
     const highestIndex = totals.indexOf(maxTotal);
+    const totalSavings = maxTotal - minTotal;
+    const savingsPercent = getPercentDiff(maxTotal, minTotal);
+
+    // Find best value (considering quality indicators)
+    // For now, best value is the lowest cost option, but could be enhanced with quality metrics
+    const bestValueIndex = lowestIndex;
+    const bestValueEstimate = estimates[bestValueIndex];
 
     // Calculate category comparison data for charts
     const categories = baseEstimate.computedOutput?.categories || [];
@@ -149,22 +276,8 @@ export default function ComparisonPage() {
       return dataPoint;
     });
 
-    // Generate insights
-    const insights: { type: "savings" | "warning" | "info"; text: string }[] = [];
-
-    // Savings insight
-    if (maxTotal > minTotal) {
-      const savings = maxTotal - minTotal;
-      insights.push({
-        type: "savings",
-        text: `${estimates[lowestIndex].name} saves ${formatCurrency(savings)} (${Math.abs(
-          getPercentDiff(maxTotal, minTotal)
-        ).toFixed(1)}% less) compared to ${estimates[highestIndex].name}`,
-      });
-    }
-
-    // Category-specific insights
-    categories.forEach((cat: any) => {
+    // Calculate category impact analysis
+    const categoryImpacts: CategoryImpact[] = categories.map((cat: any) => {
       const catValues = estimates.map((est) => {
         const estCat = est.computedOutput?.categories?.find(
           (c: any) => c.category === cat.category
@@ -172,38 +285,169 @@ export default function ComparisonPage() {
         return { est, value: estCat?.totalCost || 0 };
       });
 
-      const minCat = Math.min(...catValues.map((c) => c.value));
-      const maxCat = Math.max(...catValues.map((c) => c.value));
+      const minValue = Math.min(...catValues.map((c) => c.value));
+      const maxValue = Math.max(...catValues.map((c) => c.value));
+      const lowestEst = catValues.find((c) => c.value === minValue)?.est;
+      const highestEst = catValues.find((c) => c.value === maxValue)?.est;
 
-      if (maxCat > 0 && getPercentDiff(minCat, maxCat) > 20) {
-        const minEst = catValues.find((c) => c.value === minCat)?.est;
-        const maxEst = catValues.find((c) => c.value === maxCat)?.est;
+      return {
+        category: cat.category,
+        minValue,
+        maxValue,
+        difference: maxValue - minValue,
+        percentDiff: minValue > 0 ? getPercentDiff(minValue, maxValue) : 0,
+        lowestEstimateName: lowestEst?.name || "",
+        highestEstimateName: highestEst?.name || "",
+      };
+    }).sort((a, b) => b.difference - a.difference);
+
+    // Generate actionable insights
+    const insights: ActionableInsight[] = [];
+
+    // Primary recommendation insight
+    if (totalSavings > 0) {
+      insights.push({
+        type: "recommendation",
+        title: `Choose ${estimates[lowestIndex].name} to save ${formatCurrency(totalSavings)}`,
+        text: `This option offers ${Math.abs(savingsPercent).toFixed(1)}% lower cost compared to ${estimates[highestIndex].name}.`,
+        explanation: "This represents the most cost-effective option among your selections while maintaining project requirements.",
+        impact: "high",
+        savingsAmount: totalSavings,
+        percentDiff: Math.abs(savingsPercent),
+      });
+    }
+
+    // Top category impact insights
+    categoryImpacts.slice(0, 3).forEach((impact) => {
+      if (impact.percentDiff > 15 && impact.difference > 10000) {
         insights.push({
           type: "info",
-          text: `${cat.category}: ${maxEst?.name} allocates ${Math.abs(
-            getPercentDiff(minCat, maxCat)
-          ).toFixed(0)}% more than ${minEst?.name}`,
+          title: `${impact.category} drives ${formatCurrency(impact.difference)} in cost difference`,
+          text: `${impact.highestEstimateName} allocates ${impact.percentDiff.toFixed(0)}% more than ${impact.lowestEstimateName} in this category.`,
+          explanation: `Review ${impact.category.toLowerCase()} specifications if you want to reduce costs while maintaining quality in other areas.`,
+          impact: impact.difference > 50000 ? "high" : impact.difference > 20000 ? "medium" : "low",
+          category: impact.category,
+          percentDiff: impact.percentDiff,
         });
       }
     });
+
+    // Value-per-SF insight
+    const perSFValues = estimates.map((e) => Number(e.grandTotalPerRSF));
+    const minPerSF = Math.min(...perSFValues);
+    const maxPerSF = Math.max(...perSFValues);
+    if (maxPerSF - minPerSF > 5) {
+      insights.push({
+        type: "savings",
+        title: `Save $${(maxPerSF - minPerSF).toFixed(0)} per square foot`,
+        text: `Cost per SF ranges from $${minPerSF.toFixed(0)} to $${maxPerSF.toFixed(0)} across your options.`,
+        explanation: "Lower per-SF cost typically indicates more efficient budget allocation for your space requirements.",
+        impact: "medium",
+      });
+    }
 
     // Similar budgets insight
     const totalRange = getPercentDiff(minTotal, maxTotal);
     if (totalRange < 5 && estimates.length > 1) {
       insights.push({
         type: "info",
-        text: `All options are within ${totalRange.toFixed(1)}% of each other - differences are primarily in how the budget is allocated`,
+        title: "Estimates are closely priced",
+        text: `All options are within ${totalRange.toFixed(1)}% of each other (${formatCurrency(totalSavings)} range).`,
+        explanation: "With similar totals, your decision can focus on how the budget is allocated across categories rather than overall cost.",
+        impact: "low",
       });
     }
+
+    // Generate pros/cons for decision helper
+    const proscons: EstimateProscons[] = estimates.map((est, idx) => {
+      const pros: string[] = [];
+      const cons: string[] = [];
+      const premiumFeatures: string[] = [];
+
+      const estTotal = Number(est.grandTotal);
+      const estPerSF = Number(est.grandTotalPerRSF);
+      const isLowest = idx === lowestIndex;
+      const isHighest = idx === highestIndex;
+
+      // Cost-related pros/cons
+      if (isLowest) {
+        pros.push(`Lowest total cost (${formatCurrency(estTotal)})`);
+        pros.push(`Best value at $${estPerSF.toFixed(0)}/SF`);
+      } else if (isHighest) {
+        cons.push(`Highest total cost (+${formatCurrency(estTotal - minTotal)} vs lowest)`);
+      } else {
+        const diffFromLowest = estTotal - minTotal;
+        const percentFromLowest = getPercentDiff(minTotal, estTotal);
+        if (percentFromLowest < 10) {
+          pros.push(`Competitive pricing (+${percentFromLowest.toFixed(1)}% vs lowest)`);
+        } else {
+          cons.push(`${formatCurrency(diffFromLowest)} above the lowest option`);
+        }
+      }
+
+      // Category-specific analysis
+      categories.forEach((cat: any) => {
+        const estCat = est.computedOutput?.categories?.find((c: any) => c.category === cat.category);
+        const catValue = estCat?.totalCost || 0;
+        const catImpact = categoryImpacts.find((ci) => ci.category === cat.category);
+
+        if (catImpact && catValue === catImpact.minValue && catImpact.percentDiff > 20) {
+          pros.push(`Efficient ${cat.category.toLowerCase()} budget`);
+        }
+
+        if (catImpact && catValue === catImpact.maxValue && catImpact.percentDiff > 20) {
+          if (isHighest || est.classification === "premium") {
+            premiumFeatures.push(`Enhanced ${cat.category.toLowerCase()} allocation`);
+          } else {
+            cons.push(`Higher ${cat.category.toLowerCase()} costs`);
+          }
+        }
+      });
+
+      // Classification-based insights
+      if (est.classification === "premium") {
+        pros.push("Comprehensive specifications");
+        premiumFeatures.push("Premium-tier selections across categories");
+      } else if (est.classification === "budget-friendly") {
+        pros.push("Cost-conscious approach");
+        cons.push("May require trade-offs in some areas");
+      } else if (est.classification === "best-value") {
+        pros.push("Optimal balance of cost and quality");
+      }
+
+      return {
+        estimateId: est.id,
+        estimateName: est.name,
+        pros: pros.slice(0, 4),
+        cons: cons.slice(0, 3),
+        premiumFeatures: premiumFeatures.slice(0, 3),
+      };
+    });
+
+    // Mini pie chart data for each estimate
+    const estimatePieData = estimates.map((est) => {
+      return (est.computedOutput?.categories || []).map((cat: any, i: number) => ({
+        name: cat.category,
+        value: cat.totalCost,
+        color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+      }));
+    });
 
     return {
       estimates,
       lowestIndex,
       highestIndex,
+      bestValueIndex,
+      bestValueEstimate,
       minTotal,
       maxTotal,
+      totalSavings,
+      savingsPercent,
       categoryChartData,
-      insights: insights.slice(0, 5), // Limit to 5 insights
+      categoryImpacts,
+      insights: insights.slice(0, 6),
+      proscons,
+      estimatePieData,
     };
   }, [coloredEstimates]);
 
@@ -213,7 +457,6 @@ export default function ComparisonPage() {
         return prev.filter((eid) => eid !== id);
       }
       if (prev.length >= 4) {
-        // Max 4 estimates
         return prev;
       }
       return [...prev, id];
@@ -293,32 +536,51 @@ export default function ComparisonPage() {
             Back
           </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePrint}
-          className="hover:bg-slate-50 hover:text-slate-900 border-slate-200"
-        >
-          <Printer className="mr-2 h-4 w-4" />
-          Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrint}
+            className="hover:bg-slate-50 hover:text-slate-900 border-slate-200"
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Print Report
+          </Button>
+        </div>
       </nav>
+
+      {/* Print Header - Only visible when printing */}
+      <div className="hidden print:block p-6 border-b border-slate-200">
+        <div className="flex items-center justify-between">
+          <img src="/Connected_Logo.png" alt="Connected" className="h-10" />
+          <div className="text-right">
+            <p className="text-sm text-slate-500">Budget Comparison Report</p>
+            <p className="text-xs text-slate-400">
+              {new Date().toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-8">
         {/* Header */}
         <motion.div
-          className="text-center space-y-4"
+          className="text-center space-y-4 print:text-left"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2F739E]/10 text-sm font-medium text-[#2F739E]">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2F739E]/10 text-sm font-medium text-[#2F739E] print:bg-transparent print:px-0">
             <Scale className="w-4 h-4" />
             Budget Comparison
           </div>
           <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">
             {projectData.name}
           </h1>
-          <p className="text-slate-500 max-w-2xl mx-auto">
+          <p className="text-slate-500 max-w-2xl mx-auto print:mx-0">
             Compare your saved estimates side-by-side to find the best option for your project
           </p>
         </motion.div>
@@ -414,7 +676,7 @@ export default function ComparisonPage() {
                                     <span className="font-mono">
                                       {formatCurrency(Number(estimate.grandTotal))}
                                     </span>
-                                    <span className="text-slate-300">•</span>
+                                    <span className="text-slate-300">|</span>
                                     <span>${Number(estimate.grandTotalPerRSF).toFixed(0)}/SF</span>
                                   </div>
                                   <p className="text-xs text-slate-400 mt-1">
@@ -458,9 +720,108 @@ export default function ComparisonPage() {
           </div>
         ) : comparisonData ? (
           <>
-            {/* Summary Cards */}
+            {/* Executive Summary / Quick Decision Section */}
             <motion.div
-              className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="print:break-inside-avoid"
+            >
+              <Card className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border-emerald-200/60 shadow-lg overflow-hidden">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <Target className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl text-emerald-900">Recommendation</CardTitle>
+                      <CardDescription className="text-emerald-700/70">
+                        Our analysis of your estimates
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Best Value Highlight */}
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Award className="w-5 h-5 text-emerald-600" />
+                        <span className="text-sm font-semibold text-emerald-700 uppercase tracking-wide">
+                          Best Value Option
+                        </span>
+                      </div>
+                      <div className="p-4 bg-white rounded-xl border-2 border-emerald-200 shadow-sm">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-900">
+                              {comparisonData.bestValueEstimate.name}
+                            </h3>
+                            <p className="text-3xl font-bold text-emerald-600 mt-1">
+                              {formatCurrency(Number(comparisonData.bestValueEstimate.grandTotal))}
+                            </p>
+                            <p className="text-sm text-slate-500 mt-1">
+                              ${Number(comparisonData.bestValueEstimate.grandTotalPerRSF).toFixed(0)} per square foot
+                            </p>
+                          </div>
+                          <div
+                            className="w-4 h-16 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: comparisonData.estimates[comparisonData.bestValueIndex].color.bg }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Savings Callout */}
+                    {comparisonData.totalSavings > 0 && (
+                      <div className="lg:w-72 flex-shrink-0">
+                        <div className="flex items-center gap-2 mb-3">
+                          <PiggyBank className="w-5 h-5 text-emerald-600" />
+                          <span className="text-sm font-semibold text-emerald-700 uppercase tracking-wide">
+                            Potential Savings
+                          </span>
+                        </div>
+                        <div className="p-4 bg-emerald-600 rounded-xl text-white">
+                          <p className="text-3xl font-bold">
+                            {formatCurrency(comparisonData.totalSavings)}
+                          </p>
+                          <p className="text-emerald-100 text-sm mt-1">
+                            {Math.abs(comparisonData.savingsPercent).toFixed(1)}% less than highest option
+                          </p>
+                          <div className="mt-4 pt-3 border-t border-emerald-500/30">
+                            <p className="text-xs text-emerald-200">
+                              Compared to {comparisonData.estimates[comparisonData.highestIndex].name}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Action */}
+                  <div className="flex flex-wrap items-center gap-3 pt-2 print:hidden">
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => {
+                        const el = document.getElementById('decision-helper');
+                        el?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      See Full Analysis
+                    </Button>
+                    <Button variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+                      <Share2 className="mr-2 h-4 w-4" />
+                      Share Recommendation
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Summary Cards with Classifications */}
+            <motion.div
+              className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4 print:gap-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
@@ -471,6 +832,9 @@ export default function ComparisonPage() {
                 const grandTotal = Number(estimate.grandTotal);
                 const clientTotal = Number(estimate.clientTotal);
                 const perSF = Number(estimate.grandTotalPerRSF);
+                const classification = estimate.classification || "balanced";
+                const badge = getClassificationBadge(classification);
+                const BadgeIcon = badge.icon;
 
                 return (
                   <motion.div
@@ -478,6 +842,7 @@ export default function ComparisonPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 * index }}
+                    className="print:break-inside-avoid"
                   >
                     <Card
                       className="relative overflow-hidden h-full"
@@ -493,20 +858,23 @@ export default function ComparisonPage() {
                       />
 
                       <CardContent className="pt-5 pb-4 space-y-3">
+                        {/* Classification Badge */}
+                        <div className="flex items-center justify-between gap-2">
+                          <Badge className={`${badge.bgClass} border flex items-center gap-1 text-xs px-2 py-0.5`}>
+                            <BadgeIcon className={`w-3 h-3 ${badge.iconClass}`} />
+                            {badge.label}
+                          </Badge>
+                          {isLowest && comparisonData.estimates.length > 1 && (
+                            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                              <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
+                            </div>
+                          )}
+                        </div>
+
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-semibold text-slate-900 line-clamp-2 leading-tight">
+                          <h4 className="font-semibold text-slate-900 line-clamp-2 leading-tight text-sm">
                             {estimate.name}
                           </h4>
-                          {isLowest && comparisonData.estimates.length > 1 && (
-                            <Badge className="bg-emerald-100 text-emerald-700 border-0 flex-shrink-0">
-                              Lowest
-                            </Badge>
-                          )}
-                          {isHighest && comparisonData.estimates.length > 1 && !isLowest && (
-                            <Badge className="bg-amber-100 text-amber-700 border-0 flex-shrink-0">
-                              Highest
-                            </Badge>
-                          )}
                         </div>
 
                         <div>
@@ -514,6 +882,28 @@ export default function ComparisonPage() {
                             {formatCurrency(grandTotal)}
                           </p>
                           <p className="text-sm text-slate-500">${perSF.toFixed(0)} per SF</p>
+                        </div>
+
+                        {/* Mini Distribution Chart */}
+                        <div className="h-16 print:hidden">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={comparisonData.estimatePieData[index]}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={15}
+                                outerRadius={28}
+                                paddingAngle={2}
+                              >
+                                {comparisonData.estimatePieData[index].map((entry: any, i: number) => (
+                                  <Cell key={`cell-${i}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
                         </div>
 
                         {clientTotal !== grandTotal && (
@@ -530,8 +920,8 @@ export default function ComparisonPage() {
                         {/* Difference from lowest */}
                         {!isLowest && comparisonData.estimates.length > 1 && (
                           <div className="pt-2 border-t border-slate-100">
-                            <p className="text-xs text-slate-500">vs lowest option</p>
-                            <p className="text-sm font-medium text-rose-600">
+                            <p className="text-xs text-slate-500">vs best value option</p>
+                            <p className="text-sm font-medium text-amber-600">
                               +{formatCurrency(grandTotal - comparisonData.minTotal)} (
                               {getPercentDiff(comparisonData.minTotal, grandTotal).toFixed(1)}%)
                             </p>
@@ -544,25 +934,29 @@ export default function ComparisonPage() {
               })}
             </motion.div>
 
-            {/* Key Insights */}
+            {/* Actionable Insights */}
             {comparisonData.insights.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
+                className="print:break-inside-avoid"
               >
                 <Card className="bg-gradient-to-br from-[#2F739E]/5 to-[#4A90B8]/5 border-[#2F739E]/20">
                   <button
                     onClick={() => setExpandedInsights(!expandedInsights)}
-                    className="w-full text-left"
+                    className="w-full text-left print:hidden"
                   >
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-[#2F739E]/10 flex items-center justify-center">
-                            <Sparkles className="w-5 h-5 text-[#2F739E]" />
+                            <Lightbulb className="w-5 h-5 text-[#2F739E]" />
                           </div>
-                          <CardTitle className="text-lg">Key Insights</CardTitle>
+                          <div>
+                            <CardTitle className="text-lg">Actionable Insights</CardTitle>
+                            <CardDescription>What this means for your project</CardDescription>
+                          </div>
                         </div>
                         {expandedInsights ? (
                           <ChevronUp className="w-5 h-5 text-slate-400" />
@@ -573,32 +967,100 @@ export default function ComparisonPage() {
                     </CardHeader>
                   </button>
 
+                  {/* Print-only header */}
+                  <div className="hidden print:block">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-3">
+                        <Lightbulb className="w-5 h-5 text-[#2F739E]" />
+                        <CardTitle className="text-lg">Actionable Insights</CardTitle>
+                      </div>
+                    </CardHeader>
+                  </div>
+
                   <AnimatePresence>
-                    {expandedInsights && (
+                    {(expandedInsights || true) && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
+                        className="print:!h-auto print:!opacity-100"
                       >
-                        <CardContent className="pt-0 space-y-3">
+                        <CardContent className="pt-0 space-y-4">
                           {comparisonData.insights.map((insight, i) => (
                             <motion.div
                               key={i}
-                              className="flex items-start gap-3 p-3 bg-white/60 rounded-lg"
+                              className={`p-4 rounded-xl border ${
+                                insight.type === "recommendation"
+                                  ? "bg-emerald-50/80 border-emerald-200"
+                                  : insight.type === "savings"
+                                  ? "bg-green-50/80 border-green-200"
+                                  : insight.type === "warning"
+                                  ? "bg-amber-50/80 border-amber-200"
+                                  : "bg-white/60 border-slate-200"
+                              }`}
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: i * 0.1 }}
                             >
-                              {insight.type === "savings" && (
-                                <TrendingDown className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                              )}
-                              {insight.type === "warning" && (
-                                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                              )}
-                              {insight.type === "info" && (
-                                <TrendingUp className="w-5 h-5 text-[#2F739E] flex-shrink-0 mt-0.5" />
-                              )}
-                              <p className="text-sm text-slate-700">{insight.text}</p>
+                              <div className="flex items-start gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  insight.type === "recommendation"
+                                    ? "bg-emerald-100"
+                                    : insight.type === "savings"
+                                    ? "bg-green-100"
+                                    : insight.type === "warning"
+                                    ? "bg-amber-100"
+                                    : "bg-[#2F739E]/10"
+                                }`}>
+                                  {insight.type === "recommendation" && (
+                                    <Target className="w-4 h-4 text-emerald-600" />
+                                  )}
+                                  {insight.type === "savings" && (
+                                    <CircleDollarSign className="w-4 h-4 text-green-600" />
+                                  )}
+                                  {insight.type === "warning" && (
+                                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                                  )}
+                                  {insight.type === "info" && (
+                                    <TrendingUp className="w-4 h-4 text-[#2F739E]" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className={`font-semibold text-sm ${
+                                      insight.type === "recommendation"
+                                        ? "text-emerald-800"
+                                        : insight.type === "savings"
+                                        ? "text-green-800"
+                                        : insight.type === "warning"
+                                        ? "text-amber-800"
+                                        : "text-slate-800"
+                                    }`}>
+                                      {insight.title}
+                                    </h4>
+                                    {insight.impact && (
+                                      <Badge className={`text-[10px] px-1.5 py-0 ${
+                                        insight.impact === "high"
+                                          ? "bg-rose-100 text-rose-700 border-rose-200"
+                                          : insight.impact === "medium"
+                                          ? "bg-amber-100 text-amber-700 border-amber-200"
+                                          : "bg-slate-100 text-slate-600 border-slate-200"
+                                      } border`}>
+                                        {insight.impact} impact
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-slate-600 mt-1">{insight.text}</p>
+                                  {insight.explanation && (
+                                    <div className="mt-2 pt-2 border-t border-slate-200/50">
+                                      <p className="text-xs text-slate-500 flex items-start gap-1.5">
+                                        <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                                        <span><strong>What this means:</strong> {insight.explanation}</span>
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </motion.div>
                           ))}
                         </CardContent>
@@ -609,11 +1071,226 @@ export default function ComparisonPage() {
               </motion.div>
             )}
 
+            {/* Category Impact Analysis */}
+            {comparisonData.categoryImpacts.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="print:break-inside-avoid"
+              >
+                <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-sm">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Biggest Cost Drivers</CardTitle>
+                        <CardDescription>Categories with the largest price differences</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {comparisonData.categoryImpacts.slice(0, 4).map((impact, i) => {
+                        const maxWidth = comparisonData.categoryImpacts[0].difference;
+                        const barWidth = (impact.difference / maxWidth) * 100;
+
+                        return (
+                          <div key={impact.category} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-slate-700">{impact.category}</span>
+                              <span className="text-slate-500">
+                                {formatCurrency(impact.difference)} difference
+                                {impact.percentDiff > 0 && (
+                                  <span className="text-amber-600 ml-1">
+                                    ({impact.percentDiff.toFixed(0)}%)
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${barWidth}%` }}
+                                transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
+                              />
+                            </div>
+                            <p className="text-xs text-slate-400">
+                              {impact.lowestEstimateName}: {formatCurrency(impact.minValue)} | {impact.highestEstimateName}: {formatCurrency(impact.maxValue)}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Decision Helper Section */}
+            <motion.div
+              id="decision-helper"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="print:break-before-page"
+            >
+              <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-sm overflow-hidden">
+                <button
+                  onClick={() => setExpandedDecisionHelper(!expandedDecisionHelper)}
+                  className="w-full text-left print:hidden"
+                >
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                          <Scale className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">Decision Helper</CardTitle>
+                          <CardDescription>Pros, cons, and trade-offs for each option</CardDescription>
+                        </div>
+                      </div>
+                      {expandedDecisionHelper ? (
+                        <ChevronUp className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      )}
+                    </div>
+                  </CardHeader>
+                </button>
+
+                {/* Print-only header */}
+                <div className="hidden print:block">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <Scale className="w-5 h-5 text-purple-600" />
+                      <CardTitle className="text-lg">Decision Helper</CardTitle>
+                    </div>
+                  </CardHeader>
+                </div>
+
+                <AnimatePresence>
+                  {(expandedDecisionHelper || true) && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="print:!h-auto print:!opacity-100"
+                    >
+                      <CardContent className="pt-0">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {comparisonData.proscons.map((pc, idx) => {
+                            const estimate = comparisonData.estimates[idx];
+                            const classification = estimate.classification || "balanced";
+                            const badge = getClassificationBadge(classification);
+                            const BadgeIcon = badge.icon;
+
+                            return (
+                              <motion.div
+                                key={pc.estimateId}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 * idx }}
+                                className="border rounded-xl overflow-hidden print:break-inside-avoid"
+                                style={{ borderColor: estimate.color.bg }}
+                              >
+                                {/* Header */}
+                                <div
+                                  className="px-4 py-3 flex items-center justify-between"
+                                  style={{ backgroundColor: estimate.color.light }}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-3 h-3 rounded-full"
+                                      style={{ backgroundColor: estimate.color.bg }}
+                                    />
+                                    <h4 className="font-semibold text-slate-900 text-sm">
+                                      {pc.estimateName}
+                                    </h4>
+                                  </div>
+                                  <Badge className={`${badge.bgClass} border flex items-center gap-1 text-[10px] px-1.5 py-0`}>
+                                    <BadgeIcon className={`w-2.5 h-2.5 ${badge.iconClass}`} />
+                                    {badge.label}
+                                  </Badge>
+                                </div>
+
+                                {/* Content */}
+                                <div className="p-4 space-y-4">
+                                  {/* Pros */}
+                                  {pc.pros.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold uppercase tracking-wide mb-2">
+                                        <ThumbsUp className="w-3.5 h-3.5" />
+                                        Advantages
+                                      </div>
+                                      <ul className="space-y-1.5">
+                                        {pc.pros.map((pro, i) => (
+                                          <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                                            {pro}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+
+                                  {/* Premium Features */}
+                                  {pc.premiumFeatures && pc.premiumFeatures.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-1.5 text-amber-700 text-xs font-semibold uppercase tracking-wide mb-2">
+                                        <Star className="w-3.5 h-3.5" />
+                                        Premium Inclusions
+                                      </div>
+                                      <ul className="space-y-1.5">
+                                        {pc.premiumFeatures.map((feature, i) => (
+                                          <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                                            <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                            {feature}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+
+                                  {/* Cons */}
+                                  {pc.cons.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-1.5 text-rose-700 text-xs font-semibold uppercase tracking-wide mb-2">
+                                        <ThumbsDown className="w-3.5 h-3.5" />
+                                        Considerations
+                                      </div>
+                                      <ul className="space-y-1.5">
+                                        {pc.cons.map((con, i) => (
+                                          <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                                            <Minus className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                                            {con}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            </motion.div>
+
             {/* Category Comparison Chart */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.45 }}
+              className="print:break-inside-avoid"
             >
               <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-sm">
                 <CardHeader>
@@ -626,7 +1303,7 @@ export default function ComparisonPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[400px]">
+                  <div className="h-[400px] print:h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={comparisonData.categoryChartData}
@@ -685,6 +1362,7 @@ export default function ComparisonPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
+              className="print:break-inside-avoid"
             >
               <Card className="bg-white/80 backdrop-blur-sm border-slate-200/60 shadow-sm overflow-hidden">
                 <CardHeader>
@@ -725,17 +1403,24 @@ export default function ComparisonPage() {
 
                               return (
                                 <td key={est.id} className="px-6 py-4 text-right">
-                                  <span
-                                    className={`font-mono ${
-                                      isMin
-                                        ? "text-emerald-600 font-semibold"
-                                        : isMax
-                                        ? "text-rose-600"
-                                        : "text-slate-900"
-                                    }`}
-                                  >
-                                    {formatCurrency(value)}
-                                  </span>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span
+                                      className={`font-mono ${
+                                        isMin
+                                          ? "text-emerald-600 font-semibold"
+                                          : isMax
+                                          ? "text-amber-600"
+                                          : "text-slate-900"
+                                      }`}
+                                    >
+                                      {formatCurrency(value)}
+                                    </span>
+                                    {isMin && (
+                                      <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded">
+                                        lowest
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                               );
                             })}
@@ -750,13 +1435,18 @@ export default function ComparisonPage() {
                           const isLowest = idx === comparisonData.lowestIndex;
                           return (
                             <td key={est.id} className="px-6 py-4 text-right">
-                              <span
-                                className={`font-mono text-base ${
-                                  isLowest ? "text-emerald-600" : "text-slate-900"
-                                }`}
-                              >
-                                {formatCurrency(Number(est.grandTotal))}
-                              </span>
+                              <div className="flex items-center justify-end gap-2">
+                                <span
+                                  className={`font-mono text-base ${
+                                    isLowest ? "text-emerald-600" : "text-slate-900"
+                                  }`}
+                                >
+                                  {formatCurrency(Number(est.grandTotal))}
+                                </span>
+                                {isLowest && (
+                                  <BadgeCheck className="w-4 h-4 text-emerald-500" />
+                                )}
+                              </div>
                             </td>
                           );
                         })}
@@ -796,6 +1486,53 @@ export default function ComparisonPage() {
                 </div>
               </Card>
             </motion.div>
+
+            {/* Print Summary Section */}
+            <div className="hidden print:block print:break-before-page">
+              <Card className="border-slate-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-[#2F739E]" />
+                    Summary and Recommendation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <h4 className="font-semibold text-emerald-800 mb-2">Recommended Option</h4>
+                    <p className="text-lg font-bold text-emerald-900">
+                      {comparisonData.bestValueEstimate.name} - {formatCurrency(Number(comparisonData.bestValueEstimate.grandTotal))}
+                    </p>
+                    {comparisonData.totalSavings > 0 && (
+                      <p className="text-sm text-emerald-700 mt-1">
+                        Saves {formatCurrency(comparisonData.totalSavings)} ({Math.abs(comparisonData.savingsPercent).toFixed(1)}%) compared to highest option
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-slate-800 mb-2">Key Takeaways</h4>
+                    <ul className="space-y-2">
+                      {comparisonData.insights.slice(0, 3).map((insight, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                          <CheckCircle2 className="w-4 h-4 text-[#2F739E] flex-shrink-0 mt-0.5" />
+                          {insight.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200">
+                    <p className="text-xs text-slate-500">
+                      This comparison was generated on {new Date().toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}. Estimates are for planning purposes and may vary based on final scope and specifications.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* CTA Section */}
             <motion.div
