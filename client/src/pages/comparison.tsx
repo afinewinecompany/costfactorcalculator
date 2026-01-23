@@ -301,16 +301,16 @@ export default function ComparisonPage() {
       };
     }).sort((a, b) => b.difference - a.difference);
 
-    // Generate actionable insights
+    // Generate actionable insights (informational only, no recommendations)
     const insights: ActionableInsight[] = [];
 
-    // Primary recommendation insight
+    // Cost range insight (informational, not a recommendation)
     if (totalSavings > 0) {
       insights.push({
-        type: "recommendation",
-        title: `Choose ${estimates[lowestIndex].name} to save ${formatCurrency(totalSavings)}`,
-        text: `This option offers ${Math.abs(savingsPercent).toFixed(1)}% lower cost compared to ${estimates[highestIndex].name}.`,
-        explanation: "This represents the most cost-effective option among your selections while maintaining project requirements.",
+        type: "info",
+        title: `Budget range spans ${formatCurrency(totalSavings)}`,
+        text: `Options range from ${formatCurrency(minTotal)} to ${formatCurrency(maxTotal)}, a ${Math.abs(savingsPercent).toFixed(1)}% difference.`,
+        explanation: "This represents the spread between your lowest and highest cost options.",
         impact: "high",
         savingsAmount: totalSavings,
         percentDiff: Math.abs(savingsPercent),
@@ -720,104 +720,6 @@ export default function ComparisonPage() {
           </div>
         ) : comparisonData ? (
           <>
-            {/* Executive Summary / Quick Decision Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="print:break-inside-avoid"
-            >
-              <Card className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border-emerald-200/60 shadow-lg overflow-hidden">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                      <Target className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl text-emerald-900">Recommendation</CardTitle>
-                      <CardDescription className="text-emerald-700/70">
-                        Our analysis of your estimates
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Best Value Highlight */}
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Award className="w-5 h-5 text-emerald-600" />
-                        <span className="text-sm font-semibold text-emerald-700 uppercase tracking-wide">
-                          Best Value Option
-                        </span>
-                      </div>
-                      <div className="p-4 bg-white rounded-xl border-2 border-emerald-200 shadow-sm">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <h3 className="text-xl font-bold text-slate-900">
-                              {comparisonData.bestValueEstimate.name}
-                            </h3>
-                            <p className="text-3xl font-bold text-emerald-600 mt-1">
-                              {formatCurrency(Number(comparisonData.bestValueEstimate.grandTotal))}
-                            </p>
-                            <p className="text-sm text-slate-500 mt-1">
-                              ${Number(comparisonData.bestValueEstimate.grandTotalPerRSF).toFixed(0)} per square foot
-                            </p>
-                          </div>
-                          <div
-                            className="w-4 h-16 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: comparisonData.estimates[comparisonData.bestValueIndex].color.bg }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Savings Callout */}
-                    {comparisonData.totalSavings > 0 && (
-                      <div className="lg:w-72 flex-shrink-0">
-                        <div className="flex items-center gap-2 mb-3">
-                          <PiggyBank className="w-5 h-5 text-emerald-600" />
-                          <span className="text-sm font-semibold text-emerald-700 uppercase tracking-wide">
-                            Potential Savings
-                          </span>
-                        </div>
-                        <div className="p-4 bg-emerald-600 rounded-xl text-white">
-                          <p className="text-3xl font-bold">
-                            {formatCurrency(comparisonData.totalSavings)}
-                          </p>
-                          <p className="text-emerald-100 text-sm mt-1">
-                            {Math.abs(comparisonData.savingsPercent).toFixed(1)}% less than highest option
-                          </p>
-                          <div className="mt-4 pt-3 border-t border-emerald-500/30">
-                            <p className="text-xs text-emerald-200">
-                              Compared to {comparisonData.estimates[comparisonData.highestIndex].name}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Quick Action */}
-                  <div className="flex flex-wrap items-center gap-3 pt-2 print:hidden">
-                    <Button
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => {
-                        const el = document.getElementById('decision-helper');
-                        el?.scrollIntoView({ behavior: 'smooth' });
-                      }}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      See Full Analysis
-                    </Button>
-                    <Button variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                      <Share2 className="mr-2 h-4 w-4" />
-                      Share Recommendation
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
 
             {/* Summary Cards with Classifications */}
             <motion.div
@@ -1493,24 +1395,24 @@ export default function ComparisonPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-[#2F739E]" />
-                    Summary and Recommendation
+                    Comparison Summary
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <h4 className="font-semibold text-emerald-800 mb-2">Recommended Option</h4>
-                    <p className="text-lg font-bold text-emerald-900">
-                      {comparisonData.bestValueEstimate.name} - {formatCurrency(Number(comparisonData.bestValueEstimate.grandTotal))}
+                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <h4 className="font-semibold text-slate-800 mb-2">Budget Range Overview</h4>
+                    <p className="text-lg font-bold text-slate-900">
+                      {formatCurrency(comparisonData.minTotal)} - {formatCurrency(comparisonData.maxTotal)}
                     </p>
                     {comparisonData.totalSavings > 0 && (
-                      <p className="text-sm text-emerald-700 mt-1">
-                        Saves {formatCurrency(comparisonData.totalSavings)} ({Math.abs(comparisonData.savingsPercent).toFixed(1)}%) compared to highest option
+                      <p className="text-sm text-slate-600 mt-1">
+                        {formatCurrency(comparisonData.totalSavings)} spread ({Math.abs(comparisonData.savingsPercent).toFixed(1)}% difference between options)
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <h4 className="font-semibold text-slate-800 mb-2">Key Takeaways</h4>
+                    <h4 className="font-semibold text-slate-800 mb-2">Key Insights</h4>
                     <ul className="space-y-2">
                       {comparisonData.insights.slice(0, 3).map((insight, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-slate-600">

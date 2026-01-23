@@ -69,14 +69,46 @@ export default function ProjectListPage() {
   }));
 
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
 
   const handleOpenSettings = () => {
+    setEditingProjectId(null);
+    setSettingsModalOpen(true);
+  };
+
+  const handleOpenProjectSettings = (project: ProjectWithEstimates) => {
+    // Load the project's latest estimate data into localProject for editing
+    const latestEstimate = project.estimates?.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
+
+    if (latestEstimate) {
+      setLocalProject({
+        inputs: latestEstimate.inputs as ProjectInput,
+        sliderValues: latestEstimate.sliderValues as Record<string, number>,
+        baseValues: latestEstimate.baseValues as BaseValues,
+      });
+    } else {
+      setLocalProject({
+        inputs: {
+          projectName: project.name,
+          projectSize: 25000,
+          floors: 1,
+          location: "New York, NY",
+        },
+        sliderValues: getInitialSliderValues(),
+        baseValues: BASE_VALUES_PER_RSF,
+      });
+    }
+
+    setEditingProjectId(project.id);
     setSettingsModalOpen(true);
   };
 
   const handleOpenClientView = () => {
     const stateString = encodeState(localProject.inputs, localProject.sliderValues, localProject.baseValues);
-    setLocation(`/presentation?data=${stateString}`);
+    const projectIdParam = editingProjectId ? `&projectId=${editingProjectId}` : '';
+    setLocation(`/presentation?data=${stateString}${projectIdParam}`);
   };
 
   const handleOpenProjectClientView = (project: ProjectWithEstimates) => {
@@ -221,6 +253,15 @@ export default function ProjectListPage() {
                   )}
 
                   <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => handleOpenProjectSettings(project)}
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Button>
                     <Button
                       size="sm"
                       className="flex-1 gap-2 shadow-sm"
