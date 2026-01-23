@@ -51,6 +51,11 @@ import {
   BadgeCheck,
   ShieldCheck,
   Wallet,
+  Download,
+  Users,
+  Phone,
+  Mail,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SavedEstimate } from "@shared/schema";
@@ -175,6 +180,30 @@ function getClassificationBadge(classification: EstimateClassification) {
         iconClass: "text-slate-600",
       };
   }
+}
+
+// Get recommendation rationale based on estimate classification
+function getRecommendationRationale(classification: EstimateClassification): string {
+  switch (classification) {
+    case "best-value":
+      return "Optimal balance of quality specifications and cost efficiency";
+    case "budget-friendly":
+      return "Cost-conscious approach meeting core requirements";
+    case "premium":
+      return "Comprehensive specifications for maximum quality";
+    case "balanced":
+      return "Middle-ground approach balancing various factors";
+  }
+}
+
+// Get a brief summary of included features based on categories
+function getIncludesSummary(estimate: SavedEstimate): string[] {
+  const categories = estimate.computedOutput?.categories || [];
+  const topCategories = categories
+    .sort((a: any, b: any) => (b.totalCost || 0) - (a.totalCost || 0))
+    .slice(0, 3)
+    .map((cat: any) => cat.category);
+  return topCategories;
 }
 
 export default function ComparisonPage() {
@@ -507,7 +536,18 @@ export default function ComparisonPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900 selection:bg-[#2F739E]/20 relative overflow-hidden print:bg-white">
-      {/* Background elements */}
+      {/* Blueprint grid background pattern */}
+      <div
+        className="absolute inset-0 pointer-events-none print:hidden opacity-[0.03]"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, #2F739E 1px, transparent 1px),
+            linear-gradient(to bottom, #2F739E 1px, transparent 1px)
+          `,
+          backgroundSize: "40px 40px",
+        }}
+      />
+      {/* Radial gradient overlay */}
       <div
         className="absolute inset-0 pointer-events-none print:hidden"
         style={{
@@ -567,23 +607,71 @@ export default function ComparisonPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-8">
-        {/* Header */}
-        <motion.div
-          className="text-center space-y-4 print:text-left"
+        {/* Executive Hero Section */}
+        <motion.section
+          className="relative print:pb-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2F739E]/10 text-sm font-medium text-[#2F739E] print:bg-transparent print:px-0">
-            <Scale className="w-4 h-4" />
-            Budget Comparison
+          {/* Trust Badge */}
+          <div className="flex justify-center mb-6 print:justify-start">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#2F739E]/10 to-[#4A90B8]/10 border border-[#2F739E]/20 text-sm font-medium text-[#2F739E] print:bg-transparent print:border-none print:px-0">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Connected Cost Certainty Guarantee</span>
+            </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">
-            {projectData.name}
-          </h1>
-          <p className="text-slate-500 max-w-2xl mx-auto print:mx-0">
-            Compare your saved estimates side-by-side to find the best option for your project
-          </p>
-        </motion.div>
+
+          {/* Main Heading */}
+          <div className="text-center space-y-4 print:text-left">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-semibold text-slate-900 tracking-tight">
+              Budget Comparison for {projectData.name}
+            </h1>
+
+            {/* Dynamic Recommendation Summary */}
+            {comparisonData && selectedEstimateIds.length >= 2 ? (
+              <motion.p
+                className="text-lg text-slate-600 max-w-2xl mx-auto print:mx-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                Based on your requirements, we've prepared{" "}
+                <span className="font-semibold text-slate-800">{comparisonData.estimates.length} options</span>{" "}
+                ranging from{" "}
+                <span className="font-semibold text-[#2F739E]">{formatCurrency(comparisonData.minTotal)}</span>{" "}
+                to{" "}
+                <span className="font-semibold text-[#2F739E]">{formatCurrency(comparisonData.maxTotal)}</span>
+              </motion.p>
+            ) : (
+              <p className="text-lg text-slate-500 max-w-2xl mx-auto print:mx-0">
+                Compare your saved estimates side-by-side to find the best option for your project
+              </p>
+            )}
+
+            {/* Connected Recommends Highlight */}
+            {comparisonData && comparisonData.bestValueEstimate && (
+              <motion.div
+                className="flex justify-center print:justify-start"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <div className="inline-flex items-center gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 shadow-sm">
+                  <Badge className="bg-emerald-600 text-white border-none hover:bg-emerald-600 px-3 py-1">
+                    <Award className="w-3.5 h-3.5 mr-1.5" />
+                    Connected Recommends
+                  </Badge>
+                  <span className="text-slate-700 font-medium">
+                    {comparisonData.bestValueEstimate.name}
+                  </span>
+                  <span className="text-slate-500 hidden sm:inline">
+                    - {getRecommendationRationale(comparisonData.bestValueEstimate.classification || "best-value")}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </motion.section>
 
         {/* Estimate Selector */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -721,7 +809,7 @@ export default function ComparisonPage() {
         ) : comparisonData ? (
           <>
 
-            {/* Summary Cards with Classifications */}
+            {/* Enhanced Summary Cards with Classifications */}
             <motion.div
               className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4 print:gap-2"
               initial={{ opacity: 0, y: 20 }}
@@ -729,6 +817,7 @@ export default function ComparisonPage() {
               transition={{ delay: 0.2 }}
             >
               {comparisonData.estimates.map((estimate, index) => {
+                const isBestValue = index === comparisonData.bestValueIndex;
                 const isLowest = index === comparisonData.lowestIndex;
                 const isHighest = index === comparisonData.highestIndex;
                 const grandTotal = Number(estimate.grandTotal);
@@ -737,6 +826,7 @@ export default function ComparisonPage() {
                 const classification = estimate.classification || "balanced";
                 const badge = getClassificationBadge(classification);
                 const BadgeIcon = badge.icon;
+                const includesSummary = getIncludesSummary(estimate);
 
                 return (
                   <motion.div
@@ -747,30 +837,44 @@ export default function ComparisonPage() {
                     className="print:break-inside-avoid"
                   >
                     <Card
-                      className="relative overflow-hidden h-full"
+                      className={`relative overflow-hidden h-full transition-all duration-300 ${
+                        isBestValue
+                          ? "ring-2 ring-emerald-500 ring-offset-2 shadow-lg shadow-emerald-500/10"
+                          : "hover:shadow-lg hover:shadow-slate-200/50"
+                      }`}
                       style={{
-                        borderColor: estimate.color.bg,
+                        borderColor: isBestValue ? "#10b981" : estimate.color.bg,
                         borderWidth: "2px",
                       }}
                     >
-                      {/* Color indicator bar */}
-                      <div
-                        className="absolute top-0 left-0 right-0 h-1"
-                        style={{ backgroundColor: estimate.color.bg }}
-                      />
+                      {/* Connected Recommends Banner for best value */}
+                      {isBestValue && (
+                        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-3 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold">
+                          <Award className="w-3.5 h-3.5" />
+                          Connected Recommends
+                        </div>
+                      )}
 
-                      <CardContent className="pt-5 pb-4 space-y-3">
-                        {/* Classification Badge */}
+                      {/* Color indicator bar for non-recommended */}
+                      {!isBestValue && (
+                        <div
+                          className="absolute top-0 left-0 right-0 h-1"
+                          style={{ backgroundColor: estimate.color.bg }}
+                        />
+                      )}
+
+                      <CardContent className={`${isBestValue ? "pt-10" : "pt-5"} pb-4 space-y-3`}>
+                        {/* Classification Badge and Confidence */}
                         <div className="flex items-center justify-between gap-2">
                           <Badge className={`${badge.bgClass} border flex items-center gap-1 text-xs px-2 py-0.5`}>
                             <BadgeIcon className={`w-3 h-3 ${badge.iconClass}`} />
                             {badge.label}
                           </Badge>
-                          {isLowest && comparisonData.estimates.length > 1 && (
-                            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                              <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
-                            </div>
-                          )}
+                          {/* Cost Certainty Indicator */}
+                          <div className="flex items-center gap-1 text-[10px] text-[#2F739E] font-medium bg-[#2F739E]/5 px-2 py-0.5 rounded-full">
+                            <ShieldCheck className="w-3 h-3" />
+                            95% Certainty
+                          </div>
                         </div>
 
                         <div className="flex items-start justify-between gap-2">
@@ -779,12 +883,32 @@ export default function ComparisonPage() {
                           </h4>
                         </div>
 
-                        <div>
-                          <p className="text-2xl font-bold text-slate-900">
+                        {/* Enhanced Cost Display */}
+                        <div className="space-y-1">
+                          <p className="text-3xl font-bold text-slate-900 tracking-tight">
                             {formatCurrency(grandTotal)}
                           </p>
-                          <p className="text-sm text-slate-500">${perSF.toFixed(0)} per SF</p>
+                          <p className="text-sm text-slate-500 font-medium">${perSF.toFixed(0)} per SF</p>
                         </div>
+
+                        {/* Brief Includes Summary */}
+                        {includesSummary.length > 0 && (
+                          <div className="pt-2 border-t border-slate-100">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">
+                              Primary Budget Allocation
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {includesSummary.map((cat, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded"
+                                >
+                                  {cat}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Mini Distribution Chart */}
                         <div className="h-16 print:hidden">
@@ -834,6 +958,85 @@ export default function ComparisonPage() {
                   </motion.div>
                 );
               })}
+            </motion.div>
+
+            {/* Why Connected - Value Proposition Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="print:break-inside-avoid"
+            >
+              <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white border-none overflow-hidden relative">
+                {/* Subtle pattern overlay */}
+                <div
+                  className="absolute inset-0 opacity-[0.03]"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(to right, white 1px, transparent 1px),
+                      linear-gradient(to bottom, white 1px, transparent 1px)
+                    `,
+                    backgroundSize: "30px 30px",
+                  }}
+                />
+                <CardHeader className="relative">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-[#2F739E] flex items-center justify-center">
+                      <BadgeCheck className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-serif text-white">The Connected Advantage</CardTitle>
+                      <CardDescription className="text-slate-400">What sets our estimates apart</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="relative">
+                  <div className="grid md:grid-cols-3 gap-6">
+                    {/* Cost Certainty */}
+                    <div className="space-y-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                      <div className="w-10 h-10 rounded-lg bg-[#2F739E]/20 flex items-center justify-center">
+                        <ShieldCheck className="w-5 h-5 text-[#6BB6D6]" />
+                      </div>
+                      <h4 className="font-semibold text-white text-lg">Cost Certainty</h4>
+                      <p className="text-slate-400 text-sm leading-relaxed">
+                        Fixed-price commitments before construction begins. No surprises, no change order chaos.
+                      </p>
+                    </div>
+
+                    {/* De-Risk Methodology */}
+                    <div className="space-y-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                      <div className="w-10 h-10 rounded-lg bg-[#2F739E]/20 flex items-center justify-center">
+                        <Target className="w-5 h-5 text-[#6BB6D6]" />
+                      </div>
+                      <h4 className="font-semibold text-white text-lg">De-Risk Methodology</h4>
+                      <p className="text-slate-400 text-sm leading-relaxed">
+                        Forensic planning through LECI uncovers hidden issues before they become costly problems.
+                      </p>
+                    </div>
+
+                    {/* Expert Coordination */}
+                    <div className="space-y-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                      <div className="w-10 h-10 rounded-lg bg-[#2F739E]/20 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-[#6BB6D6]" />
+                      </div>
+                      <h4 className="font-semibold text-white text-lg">Expert Coordination</h4>
+                      <p className="text-slate-400 text-sm leading-relaxed">
+                        Single-point accountability from design through delivery. Complexity simplified.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Connected Certified Badge */}
+                  <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-center gap-3">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#2F739E]/20 border border-[#2F739E]/40">
+                      <BadgeCheck className="w-4 h-4 text-[#6BB6D6]" />
+                      <span className="text-sm font-medium text-white">Connected Certified Estimate</span>
+                    </div>
+                    <span className="text-xs text-slate-500">|</span>
+                    <span className="text-xs text-slate-400">Validated by our experienced construction team</span>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
 
             {/* Actionable Insights */}
@@ -1397,6 +1600,7 @@ export default function ComparisonPage() {
                     <ShieldCheck className="w-5 h-5 text-[#2F739E]" />
                     Comparison Summary
                   </CardTitle>
+                  <CardDescription>Connected Cost Certainty Guarantee</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -1411,6 +1615,19 @@ export default function ComparisonPage() {
                     )}
                   </div>
 
+                  {/* Connected Recommendation */}
+                  {comparisonData.bestValueEstimate && (
+                    <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Award className="w-4 h-4 text-emerald-600" />
+                        <h4 className="font-semibold text-emerald-800">Connected Recommends</h4>
+                      </div>
+                      <p className="text-sm text-emerald-700">
+                        <strong>{comparisonData.bestValueEstimate.name}</strong> - {getRecommendationRationale(comparisonData.bestValueEstimate.classification || "best-value")}
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <h4 className="font-semibold text-slate-800 mb-2">Key Insights</h4>
                     <ul className="space-y-2">
@@ -1423,47 +1640,135 @@ export default function ComparisonPage() {
                     </ul>
                   </div>
 
+                  {/* Connected Value Props for Print */}
+                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+                    <div className="text-center">
+                      <ShieldCheck className="w-5 h-5 text-[#2F739E] mx-auto mb-1" />
+                      <p className="text-xs font-medium text-slate-700">Cost Certainty</p>
+                    </div>
+                    <div className="text-center">
+                      <Target className="w-5 h-5 text-[#2F739E] mx-auto mb-1" />
+                      <p className="text-xs font-medium text-slate-700">De-Risk Methodology</p>
+                    </div>
+                    <div className="text-center">
+                      <Users className="w-5 h-5 text-[#2F739E] mx-auto mb-1" />
+                      <p className="text-xs font-medium text-slate-700">Expert Coordination</p>
+                    </div>
+                  </div>
+
                   <div className="pt-4 border-t border-slate-200">
                     <p className="text-xs text-slate-500">
                       This comparison was generated on {new Date().toLocaleDateString("en-US", {
                         month: "long",
                         day: "numeric",
                         year: "numeric",
-                      })}. Estimates are for planning purposes and may vary based on final scope and specifications.
+                      })}. All estimates include Connected's 95% Cost Certainty Guarantee.
+                    </p>
+                    <p className="text-xs text-slate-600 font-medium mt-2">
+                      Contact: contact@connectedworkplaces.com | (555) 123-4567
                     </p>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* CTA Section */}
+            {/* Premium Next Steps CTA Section */}
             <motion.div
               className="print:hidden"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
             >
-              <Card className="bg-gradient-to-br from-[#2F739E] to-[#1d5a7d] text-white border-none overflow-hidden">
-                <CardContent className="p-8 text-center space-y-4">
-                  <h3 className="text-2xl font-semibold">Ready to Move Forward?</h3>
-                  <p className="text-white/80 max-w-xl mx-auto">
-                    Our team can help you refine these estimates and develop a detailed proposal
-                    based on your preferred option.
-                  </p>
-                  <div className="flex flex-wrap gap-3 justify-center pt-2">
-                    <Button
-                      size="lg"
-                      className="bg-white text-[#2F739E] hover:bg-white/90"
-                    >
-                      Schedule Consultation
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="border-white/30 text-white hover:bg-white/10"
-                    >
-                      Ask a Question
-                    </Button>
+              <Card className="bg-white border-2 border-[#2F739E]/20 shadow-xl shadow-[#2F739E]/5 overflow-hidden">
+                {/* Decorative top bar */}
+                <div className="h-1.5 bg-gradient-to-r from-[#2F739E] via-[#4A90B8] to-[#6BB6D6]" />
+
+                <CardContent className="p-8 md:p-10">
+                  <div className="text-center space-y-6 max-w-2xl mx-auto">
+                    {/* Heading */}
+                    <div className="space-y-2">
+                      <h3 className="text-2xl md:text-3xl font-serif font-semibold text-slate-900">
+                        Ready to Move Forward?
+                      </h3>
+                      <p className="text-slate-600 text-lg">
+                        Start the conversation with your Connected team
+                      </p>
+                    </div>
+
+                    {/* CTA Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+                      <Button
+                        size="lg"
+                        className="bg-[#2F739E] hover:bg-[#1d5a7d] text-white px-8 py-6 text-base font-medium shadow-lg shadow-[#2F739E]/25 transition-all hover:shadow-xl hover:shadow-[#2F739E]/30 hover:-translate-y-0.5"
+                      >
+                        Start the Conversation
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={handlePrint}
+                        className="border-slate-300 text-slate-700 hover:bg-slate-50 px-8 py-6 text-base font-medium"
+                      >
+                        <Download className="mr-2 h-5 w-5" />
+                        Download PDF Report
+                      </Button>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 pt-4 text-sm">
+                      <span className="inline-flex items-center gap-1.5 text-slate-500">
+                        <Check className="w-4 h-4 text-emerald-500" />
+                        Free consultation
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-slate-500">
+                        <Check className="w-4 h-4 text-emerald-500" />
+                        No obligation
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-slate-500">
+                        <Check className="w-4 h-4 text-emerald-500" />
+                        Response within 24 hours
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Contact Info Section */}
+                  <div className="mt-8 pt-8 border-t border-slate-200">
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12">
+                      <div className="text-center">
+                        <p className="text-xs uppercase tracking-wider text-slate-400 font-medium mb-2">
+                          Your Connected Team
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[#2F739E]/10 flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-[#2F739E]" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-semibold text-slate-900">Connected Workplaces</p>
+                            <p className="text-sm text-slate-500">Complexity Simplified</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="hidden md:block w-px h-12 bg-slate-200" />
+
+                      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                        <a
+                          href="mailto:contact@connectedworkplaces.com"
+                          className="flex items-center gap-2 text-slate-600 hover:text-[#2F739E] transition-colors"
+                        >
+                          <Mail className="w-4 h-4" />
+                          <span className="text-sm">contact@connectedworkplaces.com</span>
+                        </a>
+                        <a
+                          href="tel:+15551234567"
+                          className="flex items-center gap-2 text-slate-600 hover:text-[#2F739E] transition-colors"
+                        >
+                          <Phone className="w-4 h-4" />
+                          <span className="text-sm">(555) 123-4567</span>
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1471,31 +1776,53 @@ export default function ComparisonPage() {
           </>
         ) : null}
 
-        {/* Footer */}
+        {/* Premium Footer */}
         <motion.footer
-          className="pt-10 border-t border-slate-200/60 text-center print:pt-4"
+          className="pt-12 border-t border-slate-200/60 text-center print:pt-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
         >
-          <div className="flex flex-col items-center gap-4">
-            <img
-              src="/Connected_Logo.png"
-              alt="Connected"
-              className="h-6 w-auto opacity-40 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500 print:opacity-100 print:grayscale-0"
-            />
-            <p className="text-slate-400 text-sm">
-              Comparison prepared{" "}
-              {new Date().toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
+          <div className="flex flex-col items-center gap-6">
+            {/* Logo and tagline */}
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src="/Connected_Logo.png"
+                alt="Connected Workplaces"
+                className="h-8 w-auto opacity-60 hover:opacity-100 transition-all duration-500 print:opacity-100"
+              />
+              <p className="text-xs uppercase tracking-widest text-slate-400 font-medium">
+                Complexity Simplified
+              </p>
+            </div>
+
+            {/* Connected Certified badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100/50 border border-slate-200/60">
+              <BadgeCheck className="w-4 h-4 text-[#2F739E]" />
+              <span className="text-xs font-medium text-slate-600">
+                Connected Certified Comparison
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className="text-xs text-slate-500">
+                {new Date().toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
+
+            {/* Legal text */}
+            <p className="text-xs text-slate-400 max-w-lg print:hidden leading-relaxed">
+              These estimates are prepared with Connected's proprietary cost analysis methodology
+              and include our 95% Cost Certainty Guarantee. Final costs will be confirmed
+              after detailed scope review with your project team.
             </p>
-            <p className="text-xs text-slate-400 max-w-md print:hidden">
-              These are interactive estimates for planning purposes. Final costs will be confirmed
-              after detailed scope review.
-            </p>
+
+            {/* Print-only footer */}
+            <div className="hidden print:block text-xs text-slate-500 mt-4 pt-4 border-t border-slate-200">
+              <p>Connected Workplaces | contact@connectedworkplaces.com | (555) 123-4567</p>
+            </div>
           </div>
         </motion.footer>
       </div>

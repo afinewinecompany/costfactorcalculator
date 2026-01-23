@@ -14,7 +14,8 @@
       "Bash(npx drizzle-kit push:pg:*)",
       "Bash(set \"DATABASE_URL=postgresql://postgres:postgres@postgres-production-4a7c.up.railway.app:5432/railway\")",
       "Bash(npm run db:push:*)",
-      "Bash(npx cross-env:*)"
+      "Bash(npx cross-env:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate"
     ]
   }
 }

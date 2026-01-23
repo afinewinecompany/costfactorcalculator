@@ -6,4 +6,4 @@ vite.config.ts.*
 *.tar.gz
 
 # Local documentation (not committed)
-.local/
+.local/.env
