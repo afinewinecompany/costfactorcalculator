@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -71,8 +78,8 @@ const ESTIMATE_COLORS = [
 // Category colors for charts
 const CATEGORY_COLORS = ["#2F739E", "#4A90B8", "#6BB6D6", "#8FCCE8", "#B3DDF2", "#D6EEFA"];
 
-// Estimate classification types
-type EstimateClassification = "best-value" | "premium" | "budget-friendly" | "balanced";
+// Estimate classification types - descriptive, not prescriptive
+type EstimateClassification = "lower-cost" | "higher-spec" | "budget-conscious" | "mid-range";
 
 interface EstimateWithColors extends SavedEstimate {
   color: typeof ESTIMATE_COLORS[number];
@@ -128,7 +135,7 @@ function getPercentDiff(base: number, compare: number): number {
   return ((compare - base) / base) * 100;
 }
 
-// Classify an estimate based on its position relative to others
+// Classify an estimate based on its position relative to others - descriptive labels only
 function classifyEstimate(
   estimate: SavedEstimate,
   allEstimates: SavedEstimate[],
@@ -138,43 +145,43 @@ function classifyEstimate(
   const total = Number(estimate.grandTotal);
   const range = highestTotal - lowestTotal;
 
-  if (range === 0) return "balanced";
+  if (range === 0) return "mid-range";
 
   const position = (total - lowestTotal) / range;
 
-  if (position <= 0.1) return "budget-friendly";
-  if (position >= 0.85) return "premium";
-  if (position <= 0.4) return "best-value";
-  return "balanced";
+  if (position <= 0.1) return "budget-conscious";
+  if (position >= 0.85) return "higher-spec";
+  if (position <= 0.4) return "lower-cost";
+  return "mid-range";
 }
 
-// Get badge styling based on classification
+// Get badge styling based on classification - neutral descriptive labels
 function getClassificationBadge(classification: EstimateClassification) {
   switch (classification) {
-    case "best-value":
+    case "lower-cost":
       return {
-        label: "Best Value",
-        icon: Award,
+        label: "Lower Cost",
+        icon: Wallet,
         bgClass: "bg-emerald-100 text-emerald-700 border-emerald-200",
         iconClass: "text-emerald-600",
       };
-    case "premium":
+    case "higher-spec":
       return {
-        label: "Premium",
+        label: "Higher Spec",
         icon: Crown,
         bgClass: "bg-amber-100 text-amber-700 border-amber-200",
         iconClass: "text-amber-600",
       };
-    case "budget-friendly":
+    case "budget-conscious":
       return {
-        label: "Budget Friendly",
+        label: "Budget Conscious",
         icon: PiggyBank,
         bgClass: "bg-blue-100 text-blue-700 border-blue-200",
         iconClass: "text-blue-600",
       };
-    case "balanced":
+    case "mid-range":
       return {
-        label: "Balanced",
+        label: "Mid-Range",
         icon: Scale,
         bgClass: "bg-slate-100 text-slate-700 border-slate-200",
         iconClass: "text-slate-600",
@@ -182,17 +189,17 @@ function getClassificationBadge(classification: EstimateClassification) {
   }
 }
 
-// Get recommendation rationale based on estimate classification
-function getRecommendationRationale(classification: EstimateClassification): string {
+// Get description based on estimate classification - informational only
+function getClassificationDescription(classification: EstimateClassification): string {
   switch (classification) {
-    case "best-value":
-      return "Optimal balance of quality specifications and cost efficiency";
-    case "budget-friendly":
-      return "Cost-conscious approach meeting core requirements";
-    case "premium":
-      return "Comprehensive specifications for maximum quality";
-    case "balanced":
-      return "Middle-ground approach balancing various factors";
+    case "lower-cost":
+      return "This option balances quality specifications with cost efficiency";
+    case "budget-conscious":
+      return "A cost-focused approach that meets core requirements";
+    case "higher-spec":
+      return "Comprehensive specifications with enhanced features";
+    case "mid-range":
+      return "A middle-ground approach balancing various factors";
   }
 }
 
@@ -217,6 +224,7 @@ export default function ComparisonPage() {
   const [showEstimateSelector, setShowEstimateSelector] = useState(true);
   const [expandedInsights, setExpandedInsights] = useState(true);
   const [expandedDecisionHelper, setExpandedDecisionHelper] = useState(true);
+  const [detailModalEstimate, setDetailModalEstimate] = useState<EstimateWithColors | null>(null);
 
   // Fetch project with all its estimates
   const { data: projectData, isLoading: projectLoading } = useQuery({
@@ -283,13 +291,8 @@ export default function ComparisonPage() {
     const maxTotal = Math.max(...totals);
     const lowestIndex = totals.indexOf(minTotal);
     const highestIndex = totals.indexOf(maxTotal);
-    const totalSavings = maxTotal - minTotal;
-    const savingsPercent = getPercentDiff(maxTotal, minTotal);
-
-    // Find best value (considering quality indicators)
-    // For now, best value is the lowest cost option, but could be enhanced with quality metrics
-    const bestValueIndex = lowestIndex;
-    const bestValueEstimate = estimates[bestValueIndex];
+    const totalRange = maxTotal - minTotal;
+    const rangePercent = getPercentDiff(minTotal, maxTotal);
 
     // Calculate category comparison data for charts
     const categories = baseEstimate.computedOutput?.categories || [];
@@ -334,15 +337,15 @@ export default function ComparisonPage() {
     const insights: ActionableInsight[] = [];
 
     // Cost range insight (informational, not a recommendation)
-    if (totalSavings > 0) {
+    if (totalRange > 0) {
       insights.push({
         type: "info",
-        title: `Budget range spans ${formatCurrency(totalSavings)}`,
-        text: `Options range from ${formatCurrency(minTotal)} to ${formatCurrency(maxTotal)}, a ${Math.abs(savingsPercent).toFixed(1)}% difference.`,
+        title: `Budget range spans ${formatCurrency(totalRange)}`,
+        text: `Options range from ${formatCurrency(minTotal)} to ${formatCurrency(maxTotal)}, a ${Math.abs(rangePercent).toFixed(1)}% difference.`,
         explanation: "This represents the spread between your lowest and highest cost options.",
         impact: "high",
-        savingsAmount: totalSavings,
-        percentDiff: Math.abs(savingsPercent),
+        savingsAmount: totalRange,
+        percentDiff: Math.abs(rangePercent),
       });
     }
 
@@ -376,12 +379,12 @@ export default function ComparisonPage() {
     }
 
     // Similar budgets insight
-    const totalRange = getPercentDiff(minTotal, maxTotal);
-    if (totalRange < 5 && estimates.length > 1) {
+    const rangePercentCheck = getPercentDiff(minTotal, maxTotal);
+    if (rangePercentCheck < 5 && estimates.length > 1) {
       insights.push({
         type: "info",
         title: "Estimates are closely priced",
-        text: `All options are within ${totalRange.toFixed(1)}% of each other (${formatCurrency(totalSavings)} range).`,
+        text: `All options are within ${rangePercentCheck.toFixed(1)}% of each other (${formatCurrency(totalRange)} range).`,
         explanation: "With similar totals, your decision can focus on how the budget is allocated across categories rather than overall cost.",
         impact: "low",
       });
@@ -398,20 +401,17 @@ export default function ComparisonPage() {
       const isLowest = idx === lowestIndex;
       const isHighest = idx === highestIndex;
 
-      // Cost-related pros/cons
+      // Cost-related characteristics (neutral language)
       if (isLowest) {
         pros.push(`Lowest total cost (${formatCurrency(estTotal)})`);
-        pros.push(`Best value at $${estPerSF.toFixed(0)}/SF`);
+        pros.push(`$${estPerSF.toFixed(0)} per square foot`);
       } else if (isHighest) {
-        cons.push(`Highest total cost (+${formatCurrency(estTotal - minTotal)} vs lowest)`);
+        pros.push(`Highest specification level`);
+        cons.push(`${formatCurrency(estTotal - minTotal)} more than lowest option`);
       } else {
         const diffFromLowest = estTotal - minTotal;
         const percentFromLowest = getPercentDiff(minTotal, estTotal);
-        if (percentFromLowest < 10) {
-          pros.push(`Competitive pricing (+${percentFromLowest.toFixed(1)}% vs lowest)`);
-        } else {
-          cons.push(`${formatCurrency(diffFromLowest)} above the lowest option`);
-        }
+        pros.push(`${percentFromLowest.toFixed(1)}% above the lowest cost option`);
       }
 
       // Category-specific analysis
@@ -433,15 +433,15 @@ export default function ComparisonPage() {
         }
       });
 
-      // Classification-based insights
-      if (est.classification === "premium") {
-        pros.push("Comprehensive specifications");
-        premiumFeatures.push("Premium-tier selections across categories");
-      } else if (est.classification === "budget-friendly") {
-        pros.push("Cost-conscious approach");
-        cons.push("May require trade-offs in some areas");
-      } else if (est.classification === "best-value") {
-        pros.push("Optimal balance of cost and quality");
+      // Classification-based characteristics (neutral language)
+      if (est.classification === "higher-spec") {
+        pros.push("Comprehensive specifications across categories");
+        premiumFeatures.push("Enhanced allocations in key areas");
+      } else if (est.classification === "budget-conscious") {
+        pros.push("Cost-focused approach");
+        cons.push("Some trade-offs may apply");
+      } else if (est.classification === "lower-cost") {
+        pros.push("Balances specifications with cost efficiency");
       }
 
       return {
@@ -466,12 +466,10 @@ export default function ComparisonPage() {
       estimates,
       lowestIndex,
       highestIndex,
-      bestValueIndex,
-      bestValueEstimate,
       minTotal,
       maxTotal,
-      totalSavings,
-      savingsPercent,
+      totalRange,
+      rangePercent,
       categoryChartData,
       categoryImpacts,
       insights: insights.slice(0, 6),
@@ -648,24 +646,21 @@ export default function ComparisonPage() {
               </p>
             )}
 
-            {/* Connected Recommends Highlight */}
-            {comparisonData && comparisonData.bestValueEstimate && (
+            {/* Click to explore prompt */}
+            {comparisonData && comparisonData.estimates.length >= 2 && (
               <motion.div
                 className="flex justify-center print:justify-start"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <div className="inline-flex items-center gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 shadow-sm">
-                  <Badge className="bg-emerald-600 text-white border-none hover:bg-emerald-600 px-3 py-1">
-                    <Award className="w-3.5 h-3.5 mr-1.5" />
-                    Connected Recommends
+                <div className="inline-flex items-center gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200/60 shadow-sm">
+                  <Badge className="bg-[#2F739E] text-white border-none hover:bg-[#2F739E] px-3 py-1">
+                    <Info className="w-3.5 h-3.5 mr-1.5" />
+                    Your Options
                   </Badge>
-                  <span className="text-slate-700 font-medium">
-                    {comparisonData.bestValueEstimate.name}
-                  </span>
-                  <span className="text-slate-500 hidden sm:inline">
-                    - {getRecommendationRationale(comparisonData.bestValueEstimate.classification || "best-value")}
+                  <span className="text-slate-600 hidden sm:inline">
+                    Click any estimate below to view detailed insights
                   </span>
                 </div>
               </motion.div>
@@ -817,13 +812,12 @@ export default function ComparisonPage() {
               transition={{ delay: 0.2 }}
             >
               {comparisonData.estimates.map((estimate, index) => {
-                const isBestValue = index === comparisonData.bestValueIndex;
                 const isLowest = index === comparisonData.lowestIndex;
                 const isHighest = index === comparisonData.highestIndex;
                 const grandTotal = Number(estimate.grandTotal);
                 const clientTotal = Number(estimate.clientTotal);
                 const perSF = Number(estimate.grandTotalPerRSF);
-                const classification = estimate.classification || "balanced";
+                const classification = estimate.classification || "mid-range";
                 const badge = getClassificationBadge(classification);
                 const BadgeIcon = badge.icon;
                 const includesSummary = getIncludesSummary(estimate);
@@ -837,33 +831,20 @@ export default function ComparisonPage() {
                     className="print:break-inside-avoid"
                   >
                     <Card
-                      className={`relative overflow-hidden h-full transition-all duration-300 ${
-                        isBestValue
-                          ? "ring-2 ring-emerald-500 ring-offset-2 shadow-lg shadow-emerald-500/10"
-                          : "hover:shadow-lg hover:shadow-slate-200/50"
-                      }`}
+                      className="relative overflow-hidden h-full transition-all duration-300 hover:shadow-lg hover:shadow-slate-200/50 cursor-pointer group"
                       style={{
-                        borderColor: isBestValue ? "#10b981" : estimate.color.bg,
+                        borderColor: estimate.color.bg,
                         borderWidth: "2px",
                       }}
+                      onClick={() => setDetailModalEstimate(estimate)}
                     >
-                      {/* Connected Recommends Banner for best value */}
-                      {isBestValue && (
-                        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-3 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold">
-                          <Award className="w-3.5 h-3.5" />
-                          Connected Recommends
-                        </div>
-                      )}
+                      {/* Color indicator bar */}
+                      <div
+                        className="absolute top-0 left-0 right-0 h-1 group-hover:h-1.5 transition-all"
+                        style={{ backgroundColor: estimate.color.bg }}
+                      />
 
-                      {/* Color indicator bar for non-recommended */}
-                      {!isBestValue && (
-                        <div
-                          className="absolute top-0 left-0 right-0 h-1"
-                          style={{ backgroundColor: estimate.color.bg }}
-                        />
-                      )}
-
-                      <CardContent className={`${isBestValue ? "pt-10" : "pt-5"} pb-4 space-y-3`}>
+                      <CardContent className="pt-5 pb-4 space-y-3">
                         {/* Classification Badge and Confidence */}
                         <div className="flex items-center justify-between gap-2">
                           <Badge className={`${badge.bgClass} border flex items-center gap-1 text-xs px-2 py-0.5`}>
@@ -946,13 +927,21 @@ export default function ComparisonPage() {
                         {/* Difference from lowest */}
                         {!isLowest && comparisonData.estimates.length > 1 && (
                           <div className="pt-2 border-t border-slate-100">
-                            <p className="text-xs text-slate-500">vs best value option</p>
-                            <p className="text-sm font-medium text-amber-600">
+                            <p className="text-xs text-slate-500">vs lowest cost option</p>
+                            <p className="text-sm font-medium text-slate-600">
                               +{formatCurrency(grandTotal - comparisonData.minTotal)} (
                               {getPercentDiff(comparisonData.minTotal, grandTotal).toFixed(1)}%)
                             </p>
                           </div>
                         )}
+
+                        {/* Click hint */}
+                        <div className="pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <p className="text-xs text-[#2F739E] font-medium flex items-center gap-1">
+                            <Info className="w-3 h-3" />
+                            Click for detailed insights
+                          </p>
+                        </div>
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -1290,7 +1279,7 @@ export default function ComparisonPage() {
                         <div className="grid md:grid-cols-2 gap-4">
                           {comparisonData.proscons.map((pc, idx) => {
                             const estimate = comparisonData.estimates[idx];
-                            const classification = estimate.classification || "balanced";
+                            const classification = estimate.classification || "mid-range";
                             const badge = getClassificationBadge(classification);
                             const BadgeIcon = badge.icon;
 
@@ -1343,12 +1332,12 @@ export default function ComparisonPage() {
                                     </div>
                                   )}
 
-                                  {/* Premium Features */}
+                                  {/* Enhanced Features */}
                                   {pc.premiumFeatures && pc.premiumFeatures.length > 0 && (
                                     <div>
                                       <div className="flex items-center gap-1.5 text-amber-700 text-xs font-semibold uppercase tracking-wide mb-2">
                                         <Star className="w-3.5 h-3.5" />
-                                        Premium Inclusions
+                                        Enhanced Features
                                       </div>
                                       <ul className="space-y-1.5">
                                         {pc.premiumFeatures.map((feature, i) => (
@@ -1608,25 +1597,28 @@ export default function ComparisonPage() {
                     <p className="text-lg font-bold text-slate-900">
                       {formatCurrency(comparisonData.minTotal)} - {formatCurrency(comparisonData.maxTotal)}
                     </p>
-                    {comparisonData.totalSavings > 0 && (
+                    {comparisonData.totalRange > 0 && (
                       <p className="text-sm text-slate-600 mt-1">
-                        {formatCurrency(comparisonData.totalSavings)} spread ({Math.abs(comparisonData.savingsPercent).toFixed(1)}% difference between options)
+                        {formatCurrency(comparisonData.totalRange)} spread ({Math.abs(comparisonData.rangePercent).toFixed(1)}% difference between options)
                       </p>
                     )}
                   </div>
 
-                  {/* Connected Recommendation */}
-                  {comparisonData.bestValueEstimate && (
-                    <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Award className="w-4 h-4 text-emerald-600" />
-                        <h4 className="font-semibold text-emerald-800">Connected Recommends</h4>
-                      </div>
-                      <p className="text-sm text-emerald-700">
-                        <strong>{comparisonData.bestValueEstimate.name}</strong> - {getRecommendationRationale(comparisonData.bestValueEstimate.classification || "best-value")}
-                      </p>
+                  {/* Options Summary */}
+                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Layers className="w-4 h-4 text-[#2F739E]" />
+                      <h4 className="font-semibold text-slate-800">Options Included</h4>
                     </div>
-                  )}
+                    <ul className="text-sm text-slate-600 space-y-1">
+                      {comparisonData.estimates.map((est) => (
+                        <li key={est.id} className="flex justify-between">
+                          <span>{est.name}</span>
+                          <span className="font-medium">{formatCurrency(Number(est.grandTotal))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
                   <div>
                     <h4 className="font-semibold text-slate-800 mb-2">Key Insights</h4>
@@ -1826,6 +1818,214 @@ export default function ComparisonPage() {
           </div>
         </motion.footer>
       </div>
+
+      {/* Estimate Details Modal */}
+      <Dialog open={!!detailModalEstimate} onOpenChange={(open) => !open && setDetailModalEstimate(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {detailModalEstimate && comparisonData && (() => {
+            const estimate = detailModalEstimate;
+            const classification = estimate.classification || "mid-range";
+            const badge = getClassificationBadge(classification);
+            const BadgeIcon = badge.icon;
+            const pc = comparisonData.proscons.find(p => p.estimateId === estimate.id);
+            const categories = estimate.computedOutput?.categories || [];
+
+            return (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: estimate.color.bg }}
+                    />
+                    <DialogTitle className="text-xl font-serif">{estimate.name}</DialogTitle>
+                  </div>
+                  <DialogDescription className="flex items-center gap-2">
+                    <Badge className={`${badge.bgClass} border flex items-center gap-1 text-xs`}>
+                      <BadgeIcon className={`w-3 h-3 ${badge.iconClass}`} />
+                      {badge.label}
+                    </Badge>
+                    <span className="text-slate-500">•</span>
+                    <span>{getClassificationDescription(classification)}</span>
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6 mt-4">
+                  {/* Cost Overview */}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3">
+                      Cost Overview
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">Total Cost</p>
+                        <p className="text-2xl font-bold text-slate-900">
+                          {formatCurrency(Number(estimate.grandTotal))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Per Square Foot</p>
+                        <p className="text-2xl font-bold text-slate-900">
+                          ${Number(estimate.grandTotalPerRSF).toFixed(0)}/SF
+                        </p>
+                      </div>
+                      {Number(estimate.clientTotal) !== Number(estimate.grandTotal) && (
+                        <div className="col-span-2 pt-3 border-t border-slate-200">
+                          <p className="text-xs text-slate-500">After TI Allowance</p>
+                          <p className="text-xl font-semibold text-emerald-600">
+                            {formatCurrency(Number(estimate.clientTotal))}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Position in Range */}
+                  <div className="p-4 bg-[#2F739E]/5 rounded-xl border border-[#2F739E]/20">
+                    <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3">
+                      Where This Option Falls
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600">Budget Range</span>
+                        <span className="font-medium text-slate-900">
+                          {formatCurrency(comparisonData.minTotal)} - {formatCurrency(comparisonData.maxTotal)}
+                        </span>
+                      </div>
+                      <div className="relative h-3 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="absolute top-0 left-0 h-full rounded-full transition-all"
+                          style={{
+                            width: `${comparisonData.totalRange > 0
+                              ? ((Number(estimate.grandTotal) - comparisonData.minTotal) / comparisonData.totalRange) * 100
+                              : 50}%`,
+                            backgroundColor: estimate.color.bg,
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-500">
+                        <span>Lower Cost</span>
+                        <span>Higher Spec</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Characteristics */}
+                  {pc && (
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* What This Option Offers */}
+                      {pc.pros.length > 0 && (
+                        <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-200/50">
+                          <h4 className="text-sm font-semibold text-emerald-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" />
+                            What This Option Offers
+                          </h4>
+                          <ul className="space-y-2">
+                            {pc.pros.map((pro, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                                <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                                {pro}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Considerations */}
+                      {pc.cons.length > 0 && (
+                        <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-200/50">
+                          <h4 className="text-sm font-semibold text-amber-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Considerations
+                          </h4>
+                          <ul className="space-y-2">
+                            {pc.cons.map((con, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                                <Minus className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                {con}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Enhanced Features */}
+                      {pc.premiumFeatures && pc.premiumFeatures.length > 0 && (
+                        <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-200/50 md:col-span-2">
+                          <h4 className="text-sm font-semibold text-purple-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4" />
+                            Enhanced Features
+                          </h4>
+                          <ul className="space-y-2">
+                            {pc.premiumFeatures.map((feature, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                                <Star className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                                {feature}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Category Breakdown */}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Budget Allocation by Category
+                    </h4>
+                    <div className="space-y-2">
+                      {categories.slice(0, 6).map((cat: any, i: number) => {
+                        const total = Number(estimate.grandTotal);
+                        const catPercent = total > 0 ? ((cat.totalCost || 0) / total) * 100 : 0;
+                        return (
+                          <div key={i} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-600">{cat.category}</span>
+                              <span className="font-medium text-slate-900">
+                                {formatCurrency(cat.totalCost || 0)}
+                                <span className="text-slate-400 text-xs ml-1">({catPercent.toFixed(0)}%)</span>
+                              </span>
+                            </div>
+                            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${catPercent}%`,
+                                  backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-4 border-t border-slate-200">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setDetailModalEstimate(null)}
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      className="flex-1 bg-[#2F739E] hover:bg-[#1d5a7d]"
+                      onClick={handlePrint}
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print Comparison
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
