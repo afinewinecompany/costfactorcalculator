@@ -425,7 +425,7 @@ export default function ComparisonPage() {
         }
 
         if (catImpact && catValue === catImpact.maxValue && catImpact.percentDiff > 20) {
-          if (isHighest || est.classification === "premium") {
+          if (isHighest || est.classification === "higher-spec") {
             premiumFeatures.push(`Enhanced ${cat.category.toLowerCase()} allocation`);
           } else {
             cons.push(`Higher ${cat.category.toLowerCase()} costs`);
@@ -614,8 +614,8 @@ export default function ComparisonPage() {
           {/* Trust Badge */}
           <div className="flex justify-center mb-6 print:justify-start">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#2F739E]/10 to-[#4A90B8]/10 border border-[#2F739E]/20 text-sm font-medium text-[#2F739E] print:bg-transparent print:border-none print:px-0">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Connected Cost Certainty Guarantee</span>
+              <BadgeCheck className="w-4 h-4" />
+              <span>Connected Preliminary Estimate</span>
             </div>
           </div>
 
@@ -845,17 +845,12 @@ export default function ComparisonPage() {
                       />
 
                       <CardContent className="pt-5 pb-4 space-y-3">
-                        {/* Classification Badge and Confidence */}
+                        {/* Classification Badge */}
                         <div className="flex items-center justify-between gap-2">
                           <Badge className={`${badge.bgClass} border flex items-center gap-1 text-xs px-2 py-0.5`}>
                             <BadgeIcon className={`w-3 h-3 ${badge.iconClass}`} />
                             {badge.label}
                           </Badge>
-                          {/* Cost Certainty Indicator */}
-                          <div className="flex items-center gap-1 text-[10px] text-[#2F739E] font-medium bg-[#2F739E]/5 px-2 py-0.5 rounded-full">
-                            <ShieldCheck className="w-3 h-3" />
-                            95% Certainty
-                          </div>
                         </div>
 
                         <div className="flex items-start justify-between gap-2">
@@ -981,14 +976,14 @@ export default function ComparisonPage() {
                 </CardHeader>
                 <CardContent className="relative">
                   <div className="grid md:grid-cols-3 gap-6">
-                    {/* Cost Certainty */}
+                    {/* Transparent Pricing */}
                     <div className="space-y-3 p-4 rounded-xl bg-white/5 border border-white/10">
                       <div className="w-10 h-10 rounded-lg bg-[#2F739E]/20 flex items-center justify-center">
-                        <ShieldCheck className="w-5 h-5 text-[#6BB6D6]" />
+                        <CircleDollarSign className="w-5 h-5 text-[#6BB6D6]" />
                       </div>
-                      <h4 className="font-semibold text-white text-lg">Cost Certainty</h4>
+                      <h4 className="font-semibold text-white text-lg">Transparent Pricing</h4>
                       <p className="text-slate-400 text-sm leading-relaxed">
-                        Fixed-price commitments before construction begins. No surprises, no change order chaos.
+                        Clear, itemized budgets with no hidden costs. Full visibility into every line item.
                       </p>
                     </div>
 
@@ -1589,7 +1584,7 @@ export default function ComparisonPage() {
                     <ShieldCheck className="w-5 h-5 text-[#2F739E]" />
                     Comparison Summary
                   </CardTitle>
-                  <CardDescription>Connected Cost Certainty Guarantee</CardDescription>
+                  <CardDescription>Preliminary Budget Comparison</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -1635,8 +1630,8 @@ export default function ComparisonPage() {
                   {/* Connected Value Props for Print */}
                   <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200">
                     <div className="text-center">
-                      <ShieldCheck className="w-5 h-5 text-[#2F739E] mx-auto mb-1" />
-                      <p className="text-xs font-medium text-slate-700">Cost Certainty</p>
+                      <CircleDollarSign className="w-5 h-5 text-[#2F739E] mx-auto mb-1" />
+                      <p className="text-xs font-medium text-slate-700">Transparent Pricing</p>
                     </div>
                     <div className="text-center">
                       <Target className="w-5 h-5 text-[#2F739E] mx-auto mb-1" />
@@ -1650,11 +1645,11 @@ export default function ComparisonPage() {
 
                   <div className="pt-4 border-t border-slate-200">
                     <p className="text-xs text-slate-500">
-                      This comparison was generated on {new Date().toLocaleDateString("en-US", {
+                      This preliminary comparison was generated on {new Date().toLocaleDateString("en-US", {
                         month: "long",
                         day: "numeric",
                         year: "numeric",
-                      })}. All estimates include Connected's 95% Cost Certainty Guarantee.
+                      })}. Final budgets will be confirmed after detailed scope review.
                     </p>
                     <p className="text-xs text-slate-600 font-medium mt-2">
                       Contact: contact@connectedworkplaces.com | (555) 123-4567
@@ -1806,9 +1801,8 @@ export default function ComparisonPage() {
 
             {/* Legal text */}
             <p className="text-xs text-slate-400 max-w-lg print:hidden leading-relaxed">
-              These estimates are prepared with Connected's proprietary cost analysis methodology
-              and include our 95% Cost Certainty Guarantee. Final costs will be confirmed
-              after detailed scope review with your project team.
+              These preliminary estimates are prepared with Connected's proprietary cost analysis methodology.
+              Final budgets will be confirmed after detailed scope review with your project team.
             </p>
 
             {/* Print-only footer */}
