@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { ProjectSettingsModal } from "@/components/calculator/ProjectSettingsModal";
 import { ProjectInput, BaseValues } from "@/lib/calculator-types";
 import { BASE_VALUES_PER_RSF } from "@/lib/calculator-constants";
@@ -34,6 +35,8 @@ interface ProjectWithEstimates extends Project {
 
 export default function ProjectListPage() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch projects from API
   const { data: projects, isLoading: projectsLoading } = useQuery<ProjectWithEstimates[]>({
@@ -53,6 +56,66 @@ export default function ProjectListPage() {
         })
       );
       return projectsWithEstimates;
+    },
+  });
+
+  // Create project mutation
+  const createProjectMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string }) => {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create project");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects-with-estimates"] });
+      toast({
+        title: "Project created",
+        description: "Your project has been created successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update project mutation
+  const updateProjectMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name: string; description?: string } }) => {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update project");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects-with-estimates"] });
+      toast({
+        title: "Project updated",
+        description: "Your project has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -148,7 +211,33 @@ export default function ProjectListPage() {
     setLocalProject((prev) => ({ ...prev, baseValues }));
   };
 
+  const handleSaveProject = async () => {
+    if (editingProjectId) {
+      // Update existing project
+      await updateProjectMutation.mutateAsync({
+        id: editingProjectId,
+        data: {
+          name: localProject.inputs.projectName,
+          description: `${localProject.inputs.location} - ${localProject.inputs.projectSize.toLocaleString()} RSF`,
+        },
+      });
+    } else {
+      // Create new project
+      const newProject = await createProjectMutation.mutateAsync({
+        name: localProject.inputs.projectName,
+        description: `${localProject.inputs.location} - ${localProject.inputs.projectSize.toLocaleString()} RSF`,
+      });
+
+      // Update editing project ID so subsequent saves update instead of creating
+      setEditingProjectId(newProject.id);
+    }
+
+    // Close modal after successful save
+    setSettingsModalOpen(false);
+  };
+
   const handleCreateNew = () => {
+    setEditingProjectId(null);
     setLocalProject({
       inputs: {
         projectName: "New Project",
@@ -357,6 +446,9 @@ export default function ProjectListPage() {
         baseValues={localProject.baseValues}
         onInputsChange={handleInputsChange}
         onBaseValuesChange={handleBaseValuesChange}
+        onSave={handleSaveProject}
+        isSaving={createProjectMutation.isPending || updateProjectMutation.isPending}
+        isEditing={!!editingProjectId}
       />
     </div>
   );
