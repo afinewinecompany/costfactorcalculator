@@ -481,6 +481,8 @@ export default function ProjectListPage() {
         onSave={handleSaveProject}
         isSaving={createProjectMutation.isPending || updateProjectMutation.isPending}
         isEditing={!!editingProjectId}
+        estimates={editingProjectId ? projects?.find(p => p.id === editingProjectId)?.estimates : undefined}
+        onEstimateUpdated={() => queryClient.invalidateQueries({ queryKey: ["projects-with-estimates"] })}
       />
     </div>
   );
