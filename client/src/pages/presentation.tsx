@@ -41,6 +41,7 @@ import {
   X,
   Save,
   GitCompare,
+  Home,
 } from "lucide-react";
 import { motion, Variants, AnimatePresence } from "framer-motion";
 
@@ -661,7 +662,6 @@ export default function PresentationPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="hidden sm:block"
           >
             <Button
               variant="ghost"
@@ -669,8 +669,9 @@ export default function PresentationPage() {
               onClick={() => setLocation("/")}
               className="text-slate-500 hover:text-[#2F739E] hover:bg-[#2F739E]/5 transition-all duration-300"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+              <Home className="h-4 w-4 sm:hidden" />
+              <ArrowLeft className="mr-2 h-4 w-4 hidden sm:inline-block" />
+              <span className="hidden sm:inline">Back</span>
             </Button>
           </motion.div>
         </div>

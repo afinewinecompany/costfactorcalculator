@@ -63,6 +63,7 @@ import {
   Phone,
   Mail,
   Check,
+  Home,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SavedEstimate } from "@shared/schema";
@@ -570,8 +571,9 @@ export default function ComparisonPage() {
             onClick={() => setLocation("/")}
             className="text-slate-500 hover:text-[#2F739E] hover:bg-[#2F739E]/5"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+            <Home className="h-4 w-4 sm:hidden" />
+            <ArrowLeft className="mr-2 h-4 w-4 hidden sm:inline-block" />
+            <span className="hidden sm:inline">Back</span>
           </Button>
         </div>
         <div className="flex items-center gap-2">

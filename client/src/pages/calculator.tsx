@@ -11,7 +11,7 @@ import { INITIAL_SLIDERS, BASE_VALUES_PER_RSF } from "@/lib/calculator-constants
 import { ProjectInput, BaseValues } from "@/lib/calculator-types";
 import { encodeState } from "@/lib/url-state";
 import { Button } from "@/components/ui/button";
-import { Presentation, Settings2 } from "lucide-react";
+import { Presentation, Settings2, Home } from "lucide-react";
 
 export default function CalculatorPage() {
   const [location, setLocation] = useLocation();
@@ -62,10 +62,18 @@ export default function CalculatorPage() {
               alt="Connected Logo"
               className="h-8 w-auto"
             />
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation("/")}
+              className="text-slate-500 hover:text-[#2F739E] hover:bg-[#2F739E]/5 h-8 w-8"
+            >
+              <Home className="h-4 w-4" />
+            </Button>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 hidden sm:block">
               Budget Breakdown
             </h1>
-            <div className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 text-xs font-medium text-slate-500 flex items-center gap-1 border border-slate-200">
+            <div className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 text-xs font-medium text-slate-500 flex items-center gap-1 border border-slate-200 hidden sm:flex">
               <Settings2 className="h-3 w-3" />
               Editor Mode
             </div>
