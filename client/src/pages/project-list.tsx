@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProjectSettingsModal } from "@/components/calculator/ProjectSettingsModal";
 import { ProjectInput, BaseValues } from "@/lib/calculator-types";
 import { BASE_VALUES_PER_RSF } from "@/lib/calculator-constants";
-import { getInitialSliderValues, calculateProjectCosts } from "@/lib/calculator-engine";
+import { getInitialSliderValues } from "@/lib/calculator-engine";
 import { encodeState } from "@/lib/url-state";
 import {
   Plus,
@@ -59,35 +59,15 @@ export default function ProjectListPage() {
     },
   });
 
-  // Build estimate payload from current local project state
-  const buildEstimatePayload = (projectData: ProjectData) => {
-    const computed = calculateProjectCosts(projectData.inputs, projectData.sliderValues, projectData.baseValues);
-    return {
-      name: `${projectData.inputs.projectName} - Settings`,
-      inputs: projectData.inputs,
-      sliderValues: projectData.sliderValues,
-      baseValues: projectData.baseValues,
-      computedOutput: computed,
-      grandTotal: computed.grandTotal.toFixed(2),
-      grandTotalPerRSF: computed.grandTotalPerRSF.toFixed(2),
-      clientTotal: computed.clientTotal.toFixed(2),
-      clientTotalPerRSF: computed.clientTotalPerRSF.toFixed(2),
-      projectSize: projectData.inputs.projectSize,
-    };
-  };
-
-  // Create project + initial estimate mutation
+  // Create project (no estimate - estimates are created from the presentation screen)
   const createProjectMutation = useMutation({
     mutationFn: async (projectData: ProjectData) => {
-      const res = await fetch("/api/projects-with-estimate", {
+      const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          project: {
-            name: projectData.inputs.projectName,
-            description: `${projectData.inputs.location} - ${projectData.inputs.projectSize.toLocaleString()} RSF`,
-          },
-          estimate: buildEstimatePayload(projectData),
+          name: projectData.inputs.projectName,
+          description: `${projectData.inputs.location} - ${projectData.inputs.projectSize.toLocaleString()} RSF`,
         }),
       });
       if (!res.ok) {
@@ -112,11 +92,10 @@ export default function ProjectListPage() {
     },
   });
 
-  // Update project + save new estimate mutation
+  // Update project metadata only (no estimate creation)
   const updateProjectMutation = useMutation({
     mutationFn: async ({ id, projectData }: { id: string; projectData: ProjectData }) => {
-      // Update project name/description
-      const projectRes = await fetch(`/api/projects/${id}`, {
+      const res = await fetch(`/api/projects/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,25 +103,11 @@ export default function ProjectListPage() {
           description: `${projectData.inputs.location} - ${projectData.inputs.projectSize.toLocaleString()} RSF`,
         }),
       });
-      if (!projectRes.ok) {
-        const error = await projectRes.json();
+      if (!res.ok) {
+        const error = await res.json();
         throw new Error(error.error || "Failed to update project");
       }
-      const project = await projectRes.json();
-
-      // Save updated settings as a new estimate
-      const estimateRes = await fetch(`/api/projects/${id}/estimates`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildEstimatePayload(projectData)),
-      });
-      if (!estimateRes.ok) {
-        const error = await estimateRes.json();
-        throw new Error(error.error || "Failed to save estimate");
-      }
-      const estimate = await estimateRes.json();
-
-      return { project, estimate };
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects-with-estimates"] });
@@ -254,15 +219,15 @@ export default function ProjectListPage() {
 
   const handleSaveProject = async () => {
     if (editingProjectId) {
-      // Update existing project + save new estimate with settings
+      // Update project metadata only (no new estimate)
       await updateProjectMutation.mutateAsync({
         id: editingProjectId,
         projectData: localProject,
       });
     } else {
-      // Create new project + initial estimate
-      const result = await createProjectMutation.mutateAsync(localProject);
-      setEditingProjectId(result.project.id);
+      // Create new project (estimates are created separately from presentation screen)
+      const project = await createProjectMutation.mutateAsync(localProject);
+      setEditingProjectId(project.id);
     }
 
     setSettingsModalOpen(false);

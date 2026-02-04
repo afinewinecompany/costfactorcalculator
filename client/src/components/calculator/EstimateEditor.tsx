@@ -6,6 +6,16 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -24,6 +34,7 @@ import {
   FileText,
   AlertCircle,
   DollarSign,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { calculateProjectCosts } from "@/lib/calculator-engine";
@@ -78,6 +89,7 @@ export function EstimateEditor({ estimates, onEstimateUpdated }: EstimateEditorP
   const { toast } = useToast();
   const [editForms, setEditForms] = useState<Record<string, EditFormState>>({});
   const [expandedItem, setExpandedItem] = useState<string>("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const getOrInitForm = useCallback(
     (estimate: SavedEstimate): EditFormState => {
@@ -126,6 +138,34 @@ export function EstimateEditor({ estimates, onEstimateUpdated }: EstimateEditorP
       });
     },
     onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteEstimateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/estimates/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete estimate");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setDeleteConfirmId(null);
+      setExpandedItem("");
+      onEstimateUpdated();
+      toast({
+        title: "Estimate deleted",
+        description: "The estimate has been removed.",
+      });
+    },
+    onError: (error: Error) => {
+      setDeleteConfirmId(null);
       toast({
         title: "Error",
         description: error.message,
@@ -366,6 +406,17 @@ export function EstimateEditor({ estimates, onEstimateUpdated }: EstimateEditorP
                     >
                       Cancel
                     </Button>
+                    <div className="flex-1" />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeleteConfirmId(estimate.id)}
+                      disabled={isSaving}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      Delete
+                    </Button>
                   </div>
                 </div>
               </AccordionContent>
@@ -373,6 +424,35 @@ export function EstimateEditor({ estimates, onEstimateUpdated }: EstimateEditorP
           );
         })}
       </Accordion>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Estimate</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this estimate? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteConfirmId && deleteEstimateMutation.mutate(deleteConfirmId)}
+              disabled={deleteEstimateMutation.isPending}
+            >
+              {deleteEstimateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
