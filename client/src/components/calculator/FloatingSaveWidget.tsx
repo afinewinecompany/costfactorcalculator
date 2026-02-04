@@ -48,6 +48,13 @@ interface FloatingSaveWidgetProps {
   onSaveEstimate: () => void;
   onNavigateToCompare: () => void;
   onResetSavedState: () => void;
+  /** When true, the widget body is hidden but the save Sheet remains mountable.
+   *  Used on mobile to avoid overlap with the BudgetSummaryWidget. */
+  hidden?: boolean;
+  /** Allows the parent to programmatically open the save sheet (e.g. from BudgetSummaryWidget). */
+  externalShowSaveSheet?: boolean;
+  /** Callback when the save sheet open state changes, so the parent can stay in sync. */
+  onShowSaveSheetChange?: (open: boolean) => void;
 }
 
 export function FloatingSaveWidget({
@@ -64,10 +71,22 @@ export function FloatingSaveWidget({
   onSaveEstimate,
   onNavigateToCompare,
   onResetSavedState,
+  hidden = false,
+  externalShowSaveSheet,
+  onShowSaveSheetChange,
 }: FloatingSaveWidgetProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [showSaveSheet, setShowSaveSheet] = useState(false);
+  const [showSaveSheetInternal, setShowSaveSheetInternal] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+
+  // Compute effective save sheet open state: internal OR external trigger
+  const showSaveSheet = showSaveSheetInternal || (externalShowSaveSheet ?? false);
+
+  // Unified setter that keeps both internal state and parent in sync
+  const setShowSaveSheet = (open: boolean) => {
+    setShowSaveSheetInternal(open);
+    onShowSaveSheetChange?.(open);
+  };
 
   // Reset just saved state after animation
   useEffect(() => {
@@ -100,6 +119,118 @@ export function FloatingSaveWidget({
   const handleSaveSubmit = () => {
     onSaveEstimate();
   };
+
+  // When hidden (mobile with budget widget visible), only render the Sheet
+  // so the save form can still be triggered from the BudgetSummaryWidget.
+  if (hidden) {
+    return (
+      <Sheet open={showSaveSheet} onOpenChange={setShowSaveSheet}>
+        <SheetContent
+          side={isMobile ? "bottom" : "right"}
+          className={isMobile ? "rounded-t-2xl" : ""}
+        >
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Save className="w-5 h-5 text-[#2F739E]" />
+              Save Your Estimate
+            </SheetTitle>
+            <SheetDescription>
+              Give your estimate a name to save it for later comparison.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-4 mt-6">
+            <div>
+              <Label htmlFor="estimateNameHidden" className="text-sm text-slate-700">
+                Estimate Name <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                id="estimateNameHidden"
+                placeholder="e.g., Option A - Premium Finishes"
+                value={estimateName}
+                onChange={(e) => onEstimateNameChange(e.target.value)}
+                className="mt-1.5"
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label htmlFor="estimateDescriptionHidden" className="text-sm text-slate-700">
+                Notes (optional)
+              </Label>
+              <Textarea
+                id="estimateDescriptionHidden"
+                placeholder="Add any notes about this estimate version..."
+                value={estimateDescription}
+                onChange={(e) => onEstimateDescriptionChange(e.target.value)}
+                className="mt-1.5 resize-none"
+                rows={3}
+              />
+            </div>
+
+            {/* Summary Preview */}
+            <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+                Estimate Snapshot
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-slate-500">Total Budget</p>
+                  <p className="text-lg font-bold text-slate-900">
+                    ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Cost per SF</p>
+                  <p className="text-lg font-bold text-slate-900">
+                    ${results.grandTotalPerRSF.toFixed(0)}
+                  </p>
+                </div>
+              </div>
+              {results.tiAllowanceTotal > 0 && (
+                <div className="pt-2 border-t border-slate-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-emerald-600">After TI Allowance</span>
+                    <span className="font-semibold text-emerald-700">
+                      ${results.clientTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveSheet(false)}
+                className="flex-1"
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveSubmit}
+                disabled={isSaving || !estimateName.trim()}
+                className="flex-1 bg-[#2F739E] hover:bg-[#1d5a7d]"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Estimate
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   // Collapsed pill view (mobile and desktop)
   if (isCollapsed) {
@@ -222,14 +353,10 @@ export function FloatingSaveWidget({
                   <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
                     {results.tiAllowanceTotal > 0 ? "Your Investment" : "Total Budget"}
                   </p>
-                  <motion.span
-                    key={results.grandTotal}
-                    initial={{ scale: 1.05, color: "#2F739E" }}
-                    animate={{ scale: 1, color: "#0f172a" }}
-                    className="text-xl font-bold text-slate-900 block"
+                  <span className="text-xl font-bold text-slate-900 block"
                   >
                     ${(results.tiAllowanceTotal > 0 ? results.clientTotal : results.grandTotal).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </motion.span>
+                  </span>
                 </div>
                 <div className="flex gap-2 text-center">
                   <div className="bg-slate-50 rounded-lg px-3 py-2">
@@ -255,10 +382,7 @@ export function FloatingSaveWidget({
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">
                     {results.tiAllowanceTotal > 0 ? "Your Investment" : "Total Budget"}
                   </p>
-                  <motion.div
-                    key={results.grandTotal}
-                    initial={{ scale: 1.02 }}
-                    animate={{ scale: 1 }}
+                  <div
                     className="flex items-baseline justify-between"
                   >
                     <span className="text-2xl font-bold text-slate-900">
@@ -267,7 +391,7 @@ export function FloatingSaveWidget({
                     <span className="text-sm text-slate-500">
                       ${(results.tiAllowanceTotal > 0 ? results.clientTotalPerRSF : results.grandTotalPerRSF).toFixed(2)}/SF
                     </span>
-                  </motion.div>
+                  </div>
                 </div>
 
                 {results.tiAllowanceTotal > 0 && (

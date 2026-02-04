@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState, useRef } from "react";
+import React, { useMemo, useEffect, useState, useRef, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useSearch } from "wouter";
 import { decodeState, encodeState } from "@/lib/url-state";
@@ -38,7 +38,9 @@ import {
   Zap,
   ArrowUpRight,
   ArrowDownRight,
-  X
+  X,
+  Save,
+  GitCompare,
 } from "lucide-react";
 import { motion, Variants, AnimatePresence } from "framer-motion";
 
@@ -54,14 +56,34 @@ function formatCompactCurrency(value: number): string {
 }
 
 // Budget Summary Widget Component
+// On mobile, this widget also integrates save-estimate functionality
+// to avoid overlapping with the FloatingSaveWidget.
 interface BudgetSummaryWidgetProps {
   results: ReturnType<typeof calculateProjectCosts>;
   initialResults: ReturnType<typeof calculateProjectCosts> | null;
   onClose: () => void;
   isMobile: boolean;
+  // Save-related props (used on mobile to merge save functionality)
+  hasUnsavedChanges?: boolean;
+  savedEstimateId?: string | null;
+  projectId?: string | null;
+  isSaving?: boolean;
+  onSaveClick?: () => void;
+  onNavigateToCompare?: () => void;
 }
 
-function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: BudgetSummaryWidgetProps) {
+function BudgetSummaryWidget({
+  results,
+  initialResults,
+  onClose,
+  isMobile,
+  hasUnsavedChanges,
+  savedEstimateId,
+  projectId,
+  isSaving,
+  onSaveClick,
+  onNavigateToCompare,
+}: BudgetSummaryWidgetProps) {
   const totalDiff = initialResults ? results.grandTotal - initialResults.grandTotal : 0;
   const percentChange = initialResults && initialResults.grandTotal > 0
     ? ((totalDiff / initialResults.grandTotal) * 100)
@@ -86,7 +108,7 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
       transition={{ type: "spring", damping: 25, stiffness: 300 }}
       className={
         isMobile
-          ? "fixed bottom-0 left-0 right-0 z-30 print:hidden safe-area-bottom"
+          ? "fixed bottom-0 left-0 right-0 z-40 print:hidden safe-area-bottom"
           : "fixed right-4 top-24 z-30 w-72 print:hidden"
       }
     >
@@ -96,6 +118,12 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
           <div className="flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-white/80" />
             <span className="text-white font-semibold text-sm">Live Budget</span>
+            {isMobile && hasUnsavedChanges && !savedEstimateId && (
+              <span className="flex items-center gap-1 text-amber-200 text-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
+                Unsaved
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -114,14 +142,9 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Total Investment</p>
-                  <motion.span
-                    key={results.grandTotal}
-                    initial={{ scale: 1.1, color: '#2F739E' }}
-                    animate={{ scale: 1, color: '#0f172a' }}
-                    className="text-xl font-bold text-slate-900"
-                  >
+                  <span className="text-xl font-bold text-slate-900">
                     ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </motion.span>
+                  </span>
                 </div>
                 {totalDiff !== 0 && (
                   <motion.div
@@ -170,6 +193,49 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
                   </p>
                 </div>
               </div>
+
+              {/* Integrated Save Button for mobile */}
+              {onSaveClick && (
+                <div className="flex gap-2 pt-1">
+                  {savedEstimateId && projectId ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={onSaveClick}
+                        className="flex-1 border-slate-200 hover:border-[#2F739E]/30 text-sm h-9"
+                        disabled={isSaving}
+                        size="sm"
+                      >
+                        <Save className="w-3.5 h-3.5 mr-1.5" />
+                        Save New
+                      </Button>
+                      {onNavigateToCompare && (
+                        <Button
+                          onClick={onNavigateToCompare}
+                          className="flex-1 bg-[#2F739E] hover:bg-[#1d5a7d] text-sm h-9"
+                          size="sm"
+                        >
+                          <GitCompare className="w-3.5 h-3.5 mr-1.5" />
+                          Compare
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Button
+                      onClick={onSaveClick}
+                      className="w-full bg-[#2F739E] hover:bg-[#1d5a7d] text-sm shadow-md hover:shadow-lg transition-all h-9"
+                      disabled={isSaving}
+                      size="sm"
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      Save Estimate
+                      {hasUnsavedChanges && !savedEstimateId && (
+                        <span className="ml-2 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -178,14 +244,9 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
               <div className="space-y-1">
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Investment</p>
                 <div className="flex items-end justify-between">
-                  <motion.span
-                    key={results.grandTotal}
-                    initial={{ scale: 1.1, color: '#2F739E' }}
-                    animate={{ scale: 1, color: '#0f172a' }}
-                    className="text-2xl font-bold text-slate-900"
-                  >
+                  <span className="text-2xl font-bold text-slate-900">
                     ${results.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </motion.span>
+                  </span>
                   {totalDiff !== 0 && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -236,14 +297,9 @@ function BudgetSummaryWidget({ results, initialResults, onClose, isMobile }: Bud
                           <span className="text-xs text-slate-600 truncate">{cat.category}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <motion.span
-                            key={cat.totalCost}
-                            initial={{ scale: 1.05 }}
-                            animate={{ scale: 1 }}
-                            className="text-xs font-medium text-slate-900"
-                          >
+                          <span className="text-xs font-medium text-slate-900">
                             {formatCompactCurrency(cat.totalCost)}
-                          </motion.span>
+                          </span>
                           {catDiff !== 0 && (
                             <span className={`text-[10px] font-medium ${
                               catDiff > 0 ? 'text-rose-500' : 'text-emerald-500'
@@ -319,6 +375,13 @@ export default function PresentationPage() {
   const lastSavedSliderValuesRef = useRef<Record<string, number> | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Shared state for externally triggering the save sheet from BudgetSummaryWidget
+  const [externalShowSaveSheet, setExternalShowSaveSheet] = useState(false);
+
+  // Guard to prevent the URL-read -> slider-write -> URL-write -> URL-read
+  // feedback loop that causes rapid re-renders and crashes on mobile.
+  const hasInitializedSlidersRef = useRef(false);
+
   const state = useMemo(() => {
     const params = new URLSearchParams(search);
     const data = params.get("data");
@@ -346,18 +409,23 @@ export default function PresentationPage() {
     () => state?.sliderValues || {}
   );
 
-  // Update slider values when state changes (e.g., from URL)
+  // Update slider values from URL state ONLY on initial load, not on every URL change.
+  // This breaks the feedback loop: slider change -> URL update -> state decode -> slider reset.
+  // Without this guard, on mobile the rapid touch-driven slider events cause:
+  //   setSliderValues -> results recalc -> URL write -> useSearch fires -> state re-decodes
+  //   -> this effect overwrites sliderValues -> re-render -> repeat (crash)
   useEffect(() => {
-    if (state?.sliderValues) {
+    if (state?.sliderValues && !hasInitializedSlidersRef.current) {
       setSliderValues(state.sliderValues);
+      hasInitializedSlidersRef.current = true;
     }
   }, [state]);
 
-  const handleSliderChange = (id: string, value: number) => {
+  const handleSliderChange = useCallback((id: string, value: number) => {
     setSliderValues((prev) => ({ ...prev, [id]: value }));
     // Mark as having unsaved changes when sliders change
     setHasUnsavedChanges(true);
-  };
+  }, []);
 
   // Inputs and baseValues remain read-only from URL
   const inputs = state?.inputs || { projectName: "Project", projectSize: 25000, floors: 1, location: "New York, NY" };
@@ -376,17 +444,35 @@ export default function PresentationPage() {
     }
   }, [showCustomization, initialResults, results]);
 
-  // Update URL when sliders change (for sharing current state)
-  // Also preserve projectId in URL if it exists
+  // Debounced URL update when sliders change (for sharing current state).
+  // On mobile, rapid slider touch events fire dozens of times per second.
+  // Without debouncing, each fires encodeState (Base64 encoding) +
+  // history.replaceState + Wouter's useSearch re-evaluation, creating a
+  // cascade that overwhelms the main thread and causes white-screen crash.
+  const urlUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (state && Object.keys(sliderValues).length > 0) {
-      const stateString = encodeState(inputs, sliderValues, baseValues);
-      let newUrl = `${window.location.pathname}?data=${stateString}`;
-      if (projectId) {
-        newUrl += `&projectId=${projectId}`;
+      if (urlUpdateTimerRef.current) {
+        clearTimeout(urlUpdateTimerRef.current);
       }
-      window.history.replaceState(null, '', newUrl);
+      urlUpdateTimerRef.current = setTimeout(() => {
+        try {
+          const stateString = encodeState(inputs, sliderValues, baseValues);
+          let newUrl = `${window.location.pathname}?data=${stateString}`;
+          if (projectId) {
+            newUrl += `&projectId=${projectId}`;
+          }
+          window.history.replaceState(null, '', newUrl);
+        } catch (e) {
+          console.error("Failed to update URL with slider state:", e);
+        }
+      }, 300);
     }
+    return () => {
+      if (urlUpdateTimerRef.current) {
+        clearTimeout(urlUpdateTimerRef.current);
+      }
+    };
   }, [sliderValues, inputs, baseValues, state, projectId]);
 
   // Handle saving the estimate
@@ -617,7 +703,9 @@ export default function PresentationPage() {
         </motion.div>
       </nav>
 
-      {/* Budget Summary Widget - Shows when customizing */}
+      {/* Budget Summary Widget - Shows when customizing.
+          On mobile, this widget also contains save functionality to avoid
+          overlapping with the FloatingSaveWidget. */}
       <AnimatePresence>
         {showCustomization && showBudgetWidget && (
           <BudgetSummaryWidget
@@ -625,11 +713,26 @@ export default function PresentationPage() {
             initialResults={initialResults}
             onClose={() => setShowBudgetWidget(false)}
             isMobile={isMobile}
+            // Save-related props for integrated mobile experience
+            hasUnsavedChanges={hasUnsavedChanges}
+            savedEstimateId={savedEstimateId}
+            projectId={projectId}
+            isSaving={isSaving}
+            onSaveClick={() => {
+              if (savedEstimateId) {
+                setSavedEstimateId(null);
+                setHasUnsavedChanges(true);
+              }
+              setExternalShowSaveSheet(true);
+            }}
+            onNavigateToCompare={() => setLocation(`/compare?project=${projectId}`)}
           />
         )}
       </AnimatePresence>
 
-      {/* Floating Save Widget - Always visible */}
+      {/* Floating Save Widget - On mobile, hidden when BudgetSummaryWidget
+          is visible (save is integrated there). The Sheet remains mountable
+          so the save form can be triggered from either widget. */}
       <FloatingSaveWidget
         results={results}
         isMobile={isMobile}
@@ -647,10 +750,13 @@ export default function PresentationPage() {
           setSavedEstimateId(null);
           setHasUnsavedChanges(true);
         }}
+        hidden={isMobile && showCustomization && showBudgetWidget}
+        externalShowSaveSheet={externalShowSaveSheet}
+        onShowSaveSheetChange={(open) => setExternalShowSaveSheet(open)}
       />
 
       <motion.div
-        className={`max-w-5xl mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12 space-y-10 md:space-y-16 relative z-10 ${isMobile ? 'pb-44' : 'pb-8'} ${showCustomization && showBudgetWidget && isMobile ? 'pb-72' : ''}`}
+        className={`max-w-5xl mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12 space-y-10 md:space-y-16 relative z-10 ${isMobile ? 'pb-52' : 'pb-8'}`}
         initial="hidden"
         animate="visible"
         variants={containerVariants}
