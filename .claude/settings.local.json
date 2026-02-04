@@ -15,7 +15,8 @@
       "Bash(set \"DATABASE_URL=postgresql://postgres:postgres@postgres-production-4a7c.up.railway.app:5432/railway\")",
       "Bash(npm run db:push:*)",
       "Bash(npx cross-env:*)",
-      "mcp__plugin_playwright_playwright__browser_navigate"
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "Bash(powershell -Command \"Copy-Item -Path ''.claude\\\\agents'' -Destination ''C:\\\\Users\\\\lilra\\\\myprojects\\\\SeacoastSystems\\\\.claude\\\\agents'' -Recurse -Force\")"
     ]
   }
 }

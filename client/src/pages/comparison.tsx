@@ -1652,7 +1652,7 @@ export default function ComparisonPage() {
                       })}. Final budgets will be confirmed after detailed scope review.
                     </p>
                     <p className="text-xs text-slate-600 font-medium mt-2">
-                      Contact: contact@connectedworkplaces.com | (555) 123-4567
+                      Contact: enquiries@connectedworkplaces.com | 1 732 798 9122
                     </p>
                   </div>
                 </CardContent>
@@ -1741,18 +1741,18 @@ export default function ComparisonPage() {
 
                       <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
                         <a
-                          href="mailto:contact@connectedworkplaces.com"
+                          href="mailto:enquiries@connectedworkplaces.com"
                           className="flex items-center gap-2 text-slate-600 hover:text-[#2F739E] transition-colors"
                         >
                           <Mail className="w-4 h-4" />
-                          <span className="text-sm">contact@connectedworkplaces.com</span>
+                          <span className="text-sm">enquiries@connectedworkplaces.com</span>
                         </a>
                         <a
-                          href="tel:+15551234567"
+                          href="tel:+17327989122"
                           className="flex items-center gap-2 text-slate-600 hover:text-[#2F739E] transition-colors"
                         >
                           <Phone className="w-4 h-4" />
-                          <span className="text-sm">(555) 123-4567</span>
+                          <span className="text-sm">1 732 798 9122</span>
                         </a>
                       </div>
                     </div>
@@ -1807,7 +1807,7 @@ export default function ComparisonPage() {
 
             {/* Print-only footer */}
             <div className="hidden print:block text-xs text-slate-500 mt-4 pt-4 border-t border-slate-200">
-              <p>Connected Workplaces | contact@connectedworkplaces.com | (555) 123-4567</p>
+              <p>Connected Workplaces | enquiries@connectedworkplaces.com | 1 732 798 9122</p>
             </div>
           </div>
         </motion.footer>
